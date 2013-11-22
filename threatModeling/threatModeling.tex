@@ -1,0 +1,92 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[francais]{babel}
+\usepackage{geometry}
+\usepackage{enumitem}
+\setlist{noitemsep}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage[compact]{titlesec}
+\usepackage{multirow}
+\usepackage{color}
+
+\geometry{
+	body={170mm,230mm},
+	left=25mm,top=25mm,
+	headheight=25mm,headsep=7mm,
+	marginparsep=4mm,
+	marginparwidth=20mm,
+	footnotesep=50mm
+}
+
+\title{INFOF405: Computer Security\newline{}Project1 -- Threat Modeling}
+
+\begin{document}
+\maketitle
+
+\section{Modeling and Gathering Information}
+
+\subsection{Use Scenarios}
+
+\begin{enumerate}
+	\item SSL connexion via OpenSSL between AS and WS1 and between AS and WS2.
+	\item The client is written in Java 1.7.
+	\item The communication between the client and AS is crypted with RSA.
+	\item The administrator access AS via an interface written in PHP 5.4.16.
+	\item Each server rests behind a firewall.
+	\item The servers will run on Apache 2.4.4.
+	\item The databases run on Mysql 5.6.12.
+	\item [IF ENOUGH TIME] Log the connection attempt().
+	\item The user cannot try more than three passwords per minute.
+\end{enumerate}
+
+\subsection{External Dependicies}
+\begin{enumerate}
+	\item Random number generator?
+	\item The generated keys depend on OpenSSL.
+	\item The security of the access to AS depends on PHP.
+	\item The security of the the request depends on the firewall.
+\end{enumerate}
+
+\subsection{Implementation Assumptions}
+\begin{enumerate}
+	\item [TO COMPLETE]Encryptions respect the standards.
+\end{enumerate}
+
+\subsection{External Security Notes}
+\begin{enumerate}
+	\item The identification of the administrator is made with a password. Although special characters are required, the user is responsible for the password strength.
+\end{enumerate}
+
+\subsection{Internal Security Notes}
+\begin{enumerate}
+	\item ?
+\end{enumerate}
+
+\subsection{Levels of Trust}
+\begin{enumerate}
+	\item\textbf{Registered User} This identity gives access to the WS.
+	\item\textbf{Non-registered User} Can communicate with AS (which will refuse him).
+	\item\textbf{Administrator} Can connect through https to AS. He can registrate users, manage access control list (?), distribute RSA keys to clients, can create and distribute RSA keys to servers, can revoke keys.
+	\item\textbf{Web Server} Communicates with AS and te databases.
+\end{enumerate}
+
+\subsection{Entry Points}
+\begin{enumerate}
+	\item Login page for the client
+\end{enumerate}
+
+\subsection{The Assets}
+\begin{enumerate}
+	\item User info
+	\item Private keys
+	\item Stored password on the WS.
+\end{enumerate}
+
+\section{Analysis of the Model}
+
+\subsection{Data Flow Diagram}
+
+\end{document}
