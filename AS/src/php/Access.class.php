@@ -52,8 +52,35 @@ class Access extends General
      * @return array('resultState'=>bool,'resultText'=>String)
      */
     public function changeUserAccess($id, $WS1, $WS2)
-    {
-    
+    {    
+        if(!is_int($id) || $id < 0)
+            return array('resultState'=>false,'resultText'=>'This user is not into the database.');
+        
+        //We take the user & check if he is in the db
+        $p = $GLOBALS['bdd']->prepare("SELECT id, salt FROM user WHERE id = :id LIMIT 1");
+		$p->execute(array('id'=>$id));
+		$res = $p->fetch(PDO::FETCH_ASSOC);
+		$p->closeCursor();
+        if(!isset($res['id']))
+            return array('resultState'=>false,'resultText'=>'This user is not into the database.');
+                
+        //We change his information
+        $WS1=0;
+        $WS2=0;
+        if($access['WS1'] === true)
+            $WS1 = 1;
+        if($access['WS2'] === true)
+            $WS2 = 1;
+          
+        $cryptedWS1 = Crypt::encryptWS($WS1,Crypt::passwordWS(1,$res['salt']));
+        $cryptedWS2 = Crypt::encryptWS($WS2,Crypt::passwordWS(2,$res['salt']));
+        
+        $p = $GLOBALS['bdd']->prepare("UPDATE user SET WS1=:ws1, WS2 = :ws2 WHERE id = :id LIMIT 1");
+		$p->execute(array('ws1'=>$cryptedWS1,'ws2'=>$cryptedWS2,'id'=>$res['id']));
+		$p->closeCursor();
+
+        //Done.      
+        return array('resultState'=>true,'resultText'=>'The authorizations for this user have been changed.');
     }
 }
 
