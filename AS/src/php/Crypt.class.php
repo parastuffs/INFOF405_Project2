@@ -2,20 +2,37 @@
 
 class Crypt extends General
 {
-
+    const ALGO = 'rijndael-256';
+    const MODE = 'cfb';
+    
     /**
      * Allows to crypt the information with a given password 
      * @param $text the text to encrypt
      * @param $password the password
      * @return String (the encrypted text)
      */
-    public static function encrypt($text, $password)
+    public static function encrypt($text, $password, $iv)
     {
+        //We create an iv
+        $ivSize = mcrypt_get_iv_size(self::ALGO, self::MODE);
+        $iv =  mcrypt_create_iv($ivSize, MCRYPT_RAND);
         
+        //We encrypt the text
+        $text = mcrypt_encrypt(self::ALGO, $password, $text, self::MODE, $iv);
+        
+        //We add the iv to the cipher text (there is no problem to do that, it does not need to be secret)
+        $text = $iv.$text;
+        
+        //We need to change the encoding of the text, otherwise some problems could appear with the characters when they are put into a file or a db
+        $text = base64_encode($text);
+        
+        //Done :D
+        return $text;
     }
     
+     
     /**
-     * Allows to decrypt an encrypted text
+     * Allows to decrypt an encrypted text (we do not need to take the iv as )
      * @param $text the text to decrypt
      * @param $password the password
      * @return String (the decrypted text)
