@@ -13,7 +13,7 @@ class Crypt extends General
      */
     public static function encrypt($text, $password, $iv)
     {
-        //We create an iv
+        //We create an iv -> It is very important to do that here to be sure we never choose the same iv+password to encrypt something.
         $ivSize = mcrypt_get_iv_size(self::ALGO, self::MODE);
         $iv =  mcrypt_create_iv($ivSize, MCRYPT_RAND);
         
@@ -39,7 +39,20 @@ class Crypt extends General
      */
     public static function decrypt($text, $password)
     {
-     
+        $text = base64_decode($text);
+       
+        //We take the iv from the cipher text
+        $ivSize = mcrypt_get_iv_size(self::ALGO, self::MODE);
+        $iv = susbtr($text, 0, $iv_size);
+        
+        //We take the real cipher text
+        $text = susbtr($text, $iv_size);
+        
+        //We decrypt.
+        $text = mcrypt_decrypt(self::ALGO, $password, $text, self::MODE, $iv);
+        
+        //Done :D!
+        return $text;
     }
     
     /** 
