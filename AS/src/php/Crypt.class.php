@@ -53,29 +53,18 @@ class Crypt extends General
         
         //Done :D!
         return $text;
-    }    
-    
-    /**
-     * Give back the encrypted id of a user 
-     * @param $id int the initial id
-     * @param $salt string the salt
-     * @return String
-     */
-    public static function encryptId($id, $salt)
-    {        
-        return Cryptage::encrypt($id,'ezf45ç))à!è!à6zfSQfzef'.$salt.'lpfeziefz!à!èè!ç!');
-    }
+    }     
     
     
     /**
-     * Give back the encrypted access to a WS 
-     * @param $WS int the access to the website (1:allowed, 0:refused)
+     * Give back the password to a WS 
+     * @param $WS int the number of the WS
      * @param $salt string the salt
      * @return String
      */
     public static function encryptWS($WS, $salt)
     {        
-        return Cryptage::encrypt($WS,'564zecv4zFEFEZf4fl'.$salt.'p^dz^l^p)àç!à!èç');
+        return '564zecv4'.$WS.'zFEFEZf4fl'.$salt.'p^dz^l^p)àç'.$WS.'!à!èç';
     }
 }
 

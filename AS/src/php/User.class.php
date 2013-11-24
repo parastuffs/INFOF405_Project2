@@ -41,8 +41,8 @@ class User extends General
         if($access['WS2'] === true)
             $WS2 = 1;
           
-        $cryptedWS1 = Crypt::encryptWS($WS1,$salt);
-        $cryptedWS2 = Crypt::encryptWS($WS2,$salt);
+        $cryptedWS1 = Crypt::encryptWS($WS1,Crypt::passwordWS(1,$salt));
+        $cryptedWS2 = Crypt::encryptWS($WS2,Crypt::passwordWS(2,$salt));
         
         //Insertion into the db (user)
         $p = $GLOBALS['bdd']->prepare("INSERT INTO user VALUES (NULL, :username, :salt, :ws1, :ws2)");
