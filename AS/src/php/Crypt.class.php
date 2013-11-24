@@ -53,17 +53,7 @@ class Crypt extends General
         
         //Done :D!
         return $text;
-    }
-    
-    /** 
-     * Check if we can take the specified algorithm on this server
-     * @param $algo the name of the algorithm
-     * @return boolean
-     */
-    public static function checkAlgo($algo)
-    {
-    
-    }
+    }    
     
     /**
      * Give back the encrypted id of a user 
