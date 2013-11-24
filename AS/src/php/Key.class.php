@@ -1,6 +1,6 @@
 <?php 
 
-class Key extends Database
+class Key extends General
 {
     /**
      * Creation of a public and private keys

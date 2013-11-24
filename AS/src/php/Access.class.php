@@ -1,6 +1,6 @@
 <?php 
 
-class Access extends Database
+class Access extends General
 {    
     /**
      * Listing the access control list 

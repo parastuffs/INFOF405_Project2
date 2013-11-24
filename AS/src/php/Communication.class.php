@@ -1,6 +1,6 @@
 <?php 
 
-class Communication extends Database
+class Communication extends General
 {
 
     /**

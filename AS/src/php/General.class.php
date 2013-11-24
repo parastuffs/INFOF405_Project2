@@ -9,7 +9,7 @@ need to encrypt them I think :).
 Is it really useful to create a specific salt for each person btw :/? If we use a common salt, isn't it ok also :/? 
 */
 
-class Database
+class General
 {
     protected $db;
     

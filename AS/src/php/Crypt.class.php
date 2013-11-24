@@ -1,6 +1,6 @@
 <?php 
 
-class Crypt extends Database
+class Crypt extends General
 {
 
     /**
