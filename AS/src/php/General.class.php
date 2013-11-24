@@ -7,6 +7,8 @@ intot the db. The only uncrypted information are the id of each entry, as there 
 need to encrypt them I think :).
 
 Is it really useful to create a specific salt for each person btw :/? If we use a common salt, isn't it ok also :/? 
+
+Do not forget to activate the "open_ssl" module in wamp!
 */
 
 class General
