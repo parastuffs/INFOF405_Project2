@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost
--- Généré le: Dim 24 Novembre 2013 à 17:31
+-- Généré le: Dim 24 Novembre 2013 à 22:04
 -- Version du serveur: 5.5.24-log
 -- Version de PHP: 5.4.3
 
@@ -23,20 +23,6 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
--- Structure de la table `access`
---
-
-CREATE TABLE IF NOT EXISTS `access` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user` varchar(255) NOT NULL,
-  `WS1` varchar(255) NOT NULL,
-  `WS2` varchar(255) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
-
--- --------------------------------------------------------
-
---
 -- Structure de la table `user`
 --
 
@@ -44,6 +30,8 @@ CREATE TABLE IF NOT EXISTS `user` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(255) NOT NULL,
   `salt` varchar(255) NOT NULL,
+  `WS1` varchar(255) NOT NULL,
+  `WS2` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 

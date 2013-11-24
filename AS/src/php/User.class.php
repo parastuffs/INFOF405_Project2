@@ -33,45 +33,6 @@ class User extends General
         //Encrypting of the important information (notice: we DO NOT use the salt previously created for that, it is really important obviously).
         $cryptedName = Crypt::encrypt($name, $this->passwordForName);
         
-        //Insertion into the db (user)
-        $p = $GLOBALS['bdd']->prepare("INSERT INTO user VALUES (NULL, :username, :salt)");
-		$p->execute(array('username'=>$cryptedName,'salt'=>$salt));
-		$p->closeCursor();	
-        
-        //We take the id of the new user
-        $p = $GLOBALS['bdd']->prepare("SELECT id FROM user WHERE username = :username");
-		$p->execute(array('username'=>$cryptedName));
-		$vf = $p->fetch(PDO::FETCH_ASSOC);
-		$p->closeCursor();	
-        $id = $vf['id'];
-         
-        //We can only check now if there is no another encrypted id corresponding to the new one created with the current salt...
-        $i=0;
-        do
-        {
-            if($i != 0)
-                $salt = $this->createSalt();
-                           
-            //We check first if there is no equivalent encrypted id that gives the same result (with another password made with the salt). It should not happen, but we have to be sure...
-            $cryptedId = Crypt::encryptId($id, $salt);
-            $p = $GLOBALS['bdd']->prepare("SELECT COUNT(*) AS nbr FROM access WHERE id = :cryptedId");
-            $p->execute(array('cryptedId'=>$cryptedId));
-            $vf = $p->fetch(PDO::FETCH_ASSOC);
-            $p->closeCursor();	
-                
-            $i++;
-        }
-        while($vf['nbr'] != 0 && $i < 10);
-        
-        if($i == 10)
-            return array('resultState'=>false,'resultText'=>'It seems there is a problem into the code. It is nearly impossible to have 10 different id that give the same crypted id to another -_-.');
-        else if($i > 1)
-        {//The salt has changed, we have to make a new request to update the information into the user table
-            $p = $GLOBALS['bdd']->prepare("UPDATE user SET salt= :newSalt WHERE id = :id");
-            $p->execute(array('id'=>$id,'newSalt'=>$salt));
-            $p->closeCursor();	
-        }
-        
         //We also crypt the access to WS1 and WS2 (we can now use the salt with no problem :))
         $WS1=0;
         $WS2=0;
@@ -82,11 +43,11 @@ class User extends General
           
         $cryptedWS1 = Crypt::encryptWS($WS1,$salt);
         $cryptedWS2 = Crypt::encryptWS($WS2,$salt);
-       
-        //Insertion into the db (access)
-        $p = $GLOBALS['bdd']->prepare("INSERT INTO access VALUES (NULL, :userId, :ws1, :ws2)");
-		$p->execute(array('userId'=>$cryptedId,'ws1'=>$cryptedWS1,'ws2'=>$cryptedWS2));
-		$p->closeCursor();	        
+        
+        //Insertion into the db (user)
+        $p = $GLOBALS['bdd']->prepare("INSERT INTO user VALUES (NULL, :username, :salt, :ws1, :ws2)");
+		$p->execute(array('username'=>$cryptedName,'salt'=>$salt,'ws1'=>$cryptedWS1, 'ws2'=>$cryptedWS2));
+		$p->closeCursor();	
         
         //Done :D
         return array('resultState'=>true, 'resultText'=>'Member successfully created!');

@@ -9,6 +9,10 @@ need to encrypt them I think :).
 Is it really useful to create a specific salt for each person btw :/? If we use a common salt, isn't it ok also :/? 
 
 Do not forget to activate the "open_ssl" module in wamp!
+
+TODO : en fait, il faut peut-être vérifier lors de la création d'un mot de passe et d'un iv qu'on est sûr de ne pas les avoir
+utilisé par hasard ailleurs (probabilité infime mais bon)... Ou bien on écrit dans le rapport qu'on considère que c'est bon
+comme ça...
 */
 
 class General
