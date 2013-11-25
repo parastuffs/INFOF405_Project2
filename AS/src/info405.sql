@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost
--- Généré le: Dim 24 Novembre 2013 à 22:04
+-- Généré le: Lun 25 Novembre 2013 à 01:23
 -- Version du serveur: 5.5.24-log
 -- Version de PHP: 5.4.3
 
@@ -19,6 +19,21 @@ SET time_zone = "+00:00";
 --
 -- Base de données: `info405`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `sym`
+--
+
+CREATE TABLE IF NOT EXISTS `sym` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user` varchar(255) NOT NULL,
+  `key` varchar(255) NOT NULL,
+  `creationDate` varchar(255) NOT NULL,
+  `validity` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -47,6 +62,7 @@ CREATE TABLE IF NOT EXISTS `ws` (
   `publicKey` varchar(255) NOT NULL,
   `privateKey` varchar(255) NOT NULL,
   `dateCreation` varchar(255) NOT NULL,
+  `salt` varchar(255) NOT NULL,
   `validity` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;

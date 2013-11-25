@@ -41,7 +41,7 @@ class Access extends General
         }
         
         //Done.
-        return array('resultState'=>true, 'resultText'=>'', $tab;        
+        return $tab;        
     }
         
     /**
@@ -72,8 +72,8 @@ class Access extends General
         if($access['WS2'] === true)
             $WS2 = 1;
           
-        $cryptedWS1 = Crypt::encryptWS($WS1,Crypt::passwordWS(1,$res['salt']));
-        $cryptedWS2 = Crypt::encryptWS($WS2,Crypt::passwordWS(2,$res['salt']));
+        $cryptedWS1 = Crypt::encrypt($WS1,Crypt::passwordWS(1,$res['salt']));
+        $cryptedWS2 = Crypt::encrypt($WS2,Crypt::passwordWS(2,$res['salt']));
         
         $p = $GLOBALS['bdd']->prepare("UPDATE user SET WS1=:ws1, WS2 = :ws2 WHERE id = :id LIMIT 1");
 		$p->execute(array('ws1'=>$cryptedWS1,'ws2'=>$cryptedWS2,'id'=>$res['id']));

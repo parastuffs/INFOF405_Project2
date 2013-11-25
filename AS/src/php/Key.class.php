@@ -1,5 +1,9 @@
 <?php 
 
+/**
+ * @see "http://php.net/manual/fr/book.openssl.php"
+ * Y'a des trucs que je ne comprends pas vraiment, comme l'histoire de protéger les clefs par un mot de passe (que je n'ai pas implémenté mais openssl le permet grace aux paramètres passés)... C'est utile pour nous? 
+ */
 class Key extends General
 {
     /**
@@ -8,7 +12,25 @@ class Key extends General
      */
     public function create()
     {
-    
+        //We make the configuration for the creation of keys (@see "http://www.php.net/manual/fr/function.openssl-csr-new.php" for the config array)
+        $config = array(
+                'digest_alg' => 'sha512',
+                'private_key_bits' => 4096,
+                'private_key_type' => 'OPENSSL_KEYTYPE_RSA',//it's the default type, but like that we directly see that we use RSA                
+                );
+        
+        //We generate the private and public keys
+        $keys = openssl_pkey_new($config);
+        
+        //We take the private key
+        openssl_pkey_export($keys, $privateKey);
+        
+        //We take the public key
+        $publicKey = openssl_pkey_get_details($keys);
+        $publicKey = $publicKey['key'];
+        
+        //Done.
+        return array('resultState'=>true,'resultText'=>'Keys successfully created!','publicKey'=>$publicKey,'privateKey'=>$privateKey);
     }
     
     /**
@@ -18,7 +40,7 @@ class Key extends General
      */
     public function getKeys($idWS)
     {
-    
+        
     }
     
     /**
@@ -32,10 +54,19 @@ class Key extends General
     }
     
     /**
-     * Revocation of specified keys
+     * Revocation of specified asymmetric keys
      * @param $id the key id to revoke
      */
-    public function revocation($id)
+    public function revocationAsymmetric($id)
+    {
+    
+    }
+    
+    /**
+     * Revocation of specified symmetric keys
+     * @param $id the key id to revoke
+     */
+    public function revocationSymmetric($id)
     {
     
     }

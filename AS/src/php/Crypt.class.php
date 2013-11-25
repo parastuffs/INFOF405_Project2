@@ -57,15 +57,39 @@ class Crypt extends General
     
     
     /**
-     * Give back the password to a WS 
+     * Give back the password to a WS for the user table
      * @param $WS int the number of the WS
      * @param $salt string the salt
      * @return String
      */
-    public static function encryptWS($WS, $salt)
+    public static function passwordWS($WS, $salt)
     {        
         return '564zecv4'.$WS.'zFEFEZf4fl'.$salt.'p^dz^l^p)àç'.$WS.'!à!èç';
     }
+    
+    /**
+     * Give back the password for a public key for the ws table 
+     * @param $salt string the salt
+     * @return String
+     */
+    public static function passwordPublicKey($salt)
+    {        
+        return '^à)çà!çèç)§FEFEZµù'.$salt.'$55878zefFE';
+    }
+        
+    /**
+     * Give back the password for a private key for the ws table 
+     * @param $salt string the salt
+     * @return String
+     */
+    public static function passwordPrivateKey($salt)
+    {        
+        return '^àù$$^'.$salt.'ù$ùù$$ùù$czq$ù$ùcqsd$ùq$ùdqscv'.$salt.'$558';
+    }
+    
+    /**
+     * Give back the password for the validity
+     * 
 }
 
 ?>

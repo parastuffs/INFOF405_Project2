@@ -10,9 +10,9 @@ class Communication extends General
      * @param $info array the informations to give to the specied server
      * @return array the information given in response by the other server
      */
-    public send($idWS, $method, $info)
+    public function send($idWS, $method, $info)
     {
-    
+        
     
     }
     

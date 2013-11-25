@@ -23,10 +23,12 @@ En fait, il dit que toutes les informations stockées dans la base de donnée do
 class General
 {
     protected $db;
+    protected $passwordForName = 'fekjplàç!FEZFEFZE777446638778fszefezèççç-^$m';
+    protected $passwordForValidity = 'lkPDA^ùùµ$^7556866µ$^^µZpdFZEPApfez';
     
     public function __construct()
     {
-        $this->connection();
+        //$this->connection();
     }
     
     /**
@@ -37,7 +39,7 @@ class General
 	{		
 		try
 		{
-			$this->db = new PDO('mysql:host=;port=;dbname=info405', 'AS', 'EFZIOnjefzoinOEF5848zef8zefef');//Second element: username, third element: password to the db.
+			$this->db = new PDO('mysql:host=localhost;dbname=info405', 'AS', 'EFZIOnjefzoinOEF5848zef8zefef');//Second element: username, third element: password to the db.
 		}
 		catch(Exception $e)
 		{
