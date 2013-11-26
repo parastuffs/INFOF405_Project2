@@ -52,12 +52,13 @@ class General
       
     /**
      * Create a salt. If possible, we should use a specific function better to create random number than rand() and even mt_rand(), it's something like openssl...()  stuff
+     * @param $minimum The minimum number of bytes of the salt
      * @return String (in a hexadecimal format but doesn't matter...)
      */
-    public function createSalt()
+    public function createSalt(int $minimum=25)
     {    
         $crypto = true;
-        $bytes = openssl_random_pseudo_bytes(25, $crypto);        
+        $bytes = openssl_random_pseudo_bytes($minimum, $crypto);        
         return bin2hex($bytes);       
     }        
     

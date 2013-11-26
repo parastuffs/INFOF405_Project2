@@ -6,6 +6,8 @@
  */
 class Key extends General
 {
+    const TIME_SESSION_KEY = 36000;//The time a session key is valid (10 hours here)
+    
     /**
      * Creation of a public and private keys
      * @return array('resultState'=>bool,'resultText'=>String,'publicKey'=>String,'privateKey'=>String)
@@ -67,6 +69,31 @@ class Key extends General
         
         //Done.
         return array('publicKey'=>$keys['publicKey'],'privateKey'=>$keys['privateKey']);
+    }   
+    
+    /**
+     * Return a new symetric key to be used to communicate.
+     * @param $origin the origin (one from these: 'WS1', 'WS2', 'AS', 'CL')
+     * @param $destination the destination (one from these: 'WS1', 'WS2', 'AS', 'CL')
+     * @return array('key'=>String,'validityTime'=>int);
+     */
+    public function getNewSymKeys($origin, $destination)
+    {
+        //We create the symetric key based on a salt
+        $key = $this->createSalt(50);
+        
+        //We generate another salt
+        $salt = $this->createSalt();
+        
+        $cryptedKey = Crypt::encrypt($key, Crypt::passwordSessionKey($salt));
+        
+        //We insert them into the db
+        $p = $GLOBALS['bdd']->prepare("INSERT INTO sessionKey VALUES (NULL, :key, :origin, :destination, :salt, :creationDate, :validity)");
+		$p->execute(array('key'=>$cryptedKey,'origin'=>$origin,'destination'=>$destination,'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
+		$p->closeCursor();	
+        
+        //We return the created key and the time it is valid.
+        return array('key'=>$key,'validityTime'=>self::TIME_SESSION_KEY);
     }    
     
     /**

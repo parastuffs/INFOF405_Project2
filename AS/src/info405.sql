@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost
--- Généré le: Mar 26 Novembre 2013 à 15:56
+-- Généré le: Mar 26 Novembre 2013 à 16:15
 -- Version du serveur: 5.5.24-log
 -- Version de PHP: 5.4.3
 
@@ -33,6 +33,23 @@ CREATE TABLE IF NOT EXISTS `key` (
   `privateKey` varchar(255) DEFAULT NULL,
   `creationDate` int(11) NOT NULL,
   `salt` varchar(255) NOT NULL,
+  `validity` tinyint(4) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `sessionkey`
+--
+
+CREATE TABLE IF NOT EXISTS `sessionkey` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `key` varchar(255) NOT NULL,
+  `origin` varchar(255) NOT NULL,
+  `destination` varchar(255) NOT NULL,
+  `salt` varchar(255) NOT NULL,
+  `creationDate` int(11) NOT NULL,
   `validity` tinyint(4) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;

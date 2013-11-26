@@ -68,7 +68,7 @@ class Crypt extends General
     }
     
     /**
-     * Give back the password for a public key for the ws table 
+     * Give back the password for a public key for the key table 
      * @param $salt string the salt
      * @return String
      */
@@ -78,7 +78,7 @@ class Crypt extends General
     }
         
     /**
-     * Give back the password for a private key for the ws table 
+     * Give back the password for a private key for the key table 
      * @param $salt string the salt
      * @return String
      */
@@ -87,6 +87,15 @@ class Crypt extends General
         return '^àù$$^'.$salt.'ù$ùù$$ùù$czq$ù$ùcqsd$ùq$ùdqscv'.$salt.'$558';
     }
     
+    /**
+     * Give back the password for a key for the sessionKey table 
+     * @param $salt string the salt
+     * @return String
+     */
+    public static function passwordSessionKey($salt)
+    {        
+        return '^àù$$^'.$salt.'ù56zef169ez1f56eç!è!çà)$^ùµfezfezfezgecv'.$salt.'$558';
+    }
 }
 
 ?>
