@@ -86,9 +86,11 @@ class Key extends General
         $salt = $this->createSalt();
         
         $cryptedKey = Crypt::encrypt($key, Crypt::passwordSessionKey($salt));
+        $origin = Crypt::encrypt($origin, Crypt::passwordKeyOrigin($salt));
+        $destination = Crypt::encrypt($destination, Crypt::passwordKeyDestination($salt));
         
         //We insert them into the db
-        $p = $GLOBALS['bdd']->prepare("INSERT INTO sessionKey VALUES (NULL, :key, :origin, :destination, :salt, :creationDate, :validity)");
+        $p = $GLOBALS['bdd']->prepare("INSERT INTO sessionkey VALUES (NULL, :key, :origin, :destination, :salt, :creationDate, :validity)");
 		$p->execute(array('key'=>$cryptedKey,'origin'=>$origin,'destination'=>$destination,'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
 		$p->closeCursor();	
         
@@ -97,13 +99,32 @@ class Key extends General
     }    
     
     /**
-     * Display the keys used by a user for both WS (if they exist)
+     * Display all the symetric keys used by a user (the most recent first)
      * @param $id int the id of the user
-     * @return array('resultState'=>bool,'resultText'=>String)
+     * @return array('resultState'=>bool,'resultText'=>String,'keys'=>array(array('key'=>String,'origin'=>String,'destination'=>String),...))
      */
-    public function changeUserAccess($id, $WS1, $WS2)
+    public function displayUserKeys($id)
     {
-    
+        if(!is_int($id) || $id < 0)
+            return array('resultState'=>false,'resultText'=>'Invalid user id.');
+            
+        $p = $GLOBALS['bdd']->prepare("SELECT * FROM user WHERE id = :id ORDER BY creationDate DESC");
+		$p->execute(array('id'=>$id));
+		$res = $p->fetchAll(PDO::FETCH_ASSOC);
+		$p->closeCursor();
+        
+        //We decrypt the keys
+        $tab = array('resultState'=>true,'resultText'=>'','keys'=>array());
+        foreach($res as $key => $value)
+        {
+            $key = Crypt::decrypt($res[$key]['key'], Crypt::passwordSessionKey($res[$key]['salt']));
+            $origin = Crypt::decrypt($res[$key]['origin'], Crypt::passwordKeyOrigin($res[$key]['salt']));
+            $destination = Crypt::decrypt($res[$key]['destination'], Crypt::passwordKeyDestination($res[$key]['salt']));
+            $tab['keys'][] = array('key'=>$key,'origin'=>$origin,'destination'=>$destination);
+        }
+        
+        //Done.
+        return $tab;
     }
     
     /**
