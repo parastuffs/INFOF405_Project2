@@ -96,6 +96,26 @@ class Crypt extends General
     {        
         return '^àù$$^'.$salt.'ù56zef169ez1f56eç!è!çà)$^ùµfezfezfezgecv'.$salt.'$558';
     }
+    
+    /**
+     * Give back the password for the origin for the sessionKey table
+     * @param $salt string the salt
+     * @return String
+     */
+    public static function passwordKeyOrigin($salt)
+    {        
+        return 'à)àç)&é)éàzgecv'.$salt.'$558';
+    }
+    
+    /**
+     * Give back the password for the destination for the sessionKey table
+     * @param $salt string the salt
+     * @return String
+     */
+    public static function passwordKeyDestination($salt)
+    {        
+        return 'à)àçF4fez9"Eecv'.$salt.'$558';
+    }
 }
 
 ?>

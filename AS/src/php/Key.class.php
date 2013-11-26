@@ -128,19 +128,38 @@ class Key extends General
     }
     
     /**
-     * Revocation of specified asymmetric keys
+     * Revocation of a specified asymmetric key into the db (but we have to send the information to the concerned WS or client too!)
      * @param $id the key id to revoke
+     * @return array('resultState'=>bool,'resultText'=>String)
      */
-    public function revocationAsymmetric($id)
+    public function revocationAsymmetricKey($id)
     {
-    
+        if(!is_int($id) || $id < 0)
+            return array('resultState'=>false,'resultText'=>'Invalid asymetric key id.');
+        
+        //We take the key  
+        $p = $GLOBALS['bdd']->prepare("SELECT * FROM key WHERE id = :id AND validity = 1");
+		$p->execute(array('id'=>$id));
+		$res = $p->fetch(PDO::FETCH_ASSOC);
+		$p->closeCursor();
+        
+        if(!isset($res['id']))
+            return array('resultState'=>false,'resultText'=>'This key is not into the db or it is already revoked.');
+            
+        //We revoke the key
+        $p = $GLOBALS['bdd']->prepare("UPDATE key SET validity=:validity WHERE id = :id LIMIT 1");
+		$p->execute(array('validity'=>2,'id'=>$id));
+		$p->closeCursor();
+        
+        //Done.
+        return array('resultState'=>true,'resultText'=>'Key successfully revoked');
     }
     
     /**
      * Revocation of specified symmetric keys
      * @param $id the key id to revoke
      */
-    public function revocationSymmetric($id)
+    public function revocationSymmetricKey($id)
     {
     
     }
