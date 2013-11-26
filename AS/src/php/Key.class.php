@@ -72,9 +72,9 @@ class Key extends General
     }   
     
     /**
-     * Return a new symetric key to be used to communicate.
-     * @param $origin the origin (one from these: 'WS1', 'WS2', 'AS', 'CL')
-     * @param $destination the destination (one from these: 'WS1', 'WS2', 'AS', 'CL')
+     * Return a new symetric key to be used to communicate. If it's a client, change the below 'ID_CLIENT' by their id.
+     * @param $origin the origin (one from these: 'WS1', 'WS2', 'AS', 'ID_CLIENT)
+     * @param $destination the destination (one from these: 'WS1', 'WS2', 'AS', 'ID_CLIENT')
      * @return array('key'=>String,'validityTime'=>int);
      */
     public function getNewSymKeys($origin, $destination)
