@@ -101,7 +101,7 @@ class Key extends General
     /**
      * Display all the symetric keys used by a user (the most recent first)
      * @param $id int the id of the user
-     * @return array('resultState'=>bool,'resultText'=>String,'keys'=>array(array('key'=>String,'origin'=>String,'destination'=>String),...))
+     * @return array('resultState'=>bool,'resultText'=>String,'keys'=>array($id=>array('key'=>String,'origin'=>String,'destination'=>String),...))
      */
     public function displayUserKeys($id)
     {
@@ -120,7 +120,7 @@ class Key extends General
             $key = Crypt::decrypt($res[$key]['key'], Crypt::passwordSessionKey($res[$key]['salt']));
             $origin = Crypt::decrypt($res[$key]['origin'], Crypt::passwordKeyOrigin($res[$key]['salt']));
             $destination = Crypt::decrypt($res[$key]['destination'], Crypt::passwordKeyDestination($res[$key]['salt']));
-            $tab['keys'][] = array('key'=>$key,'origin'=>$origin,'destination'=>$destination);
+            $tab['keys'][$res[$key]['id']] = array('key'=>$key,'origin'=>$origin,'destination'=>$destination);
         }
         
         //Done.
@@ -156,12 +156,30 @@ class Key extends General
     }
     
     /**
-     * Revocation of specified symmetric keys
+     * Revocation of a specified symmetric key into the db (but we have to send the information to the concerned WS or client too!)
      * @param $id the key id to revoke
      */
     public function revocationSymmetricKey($id)
     {
-    
+        if(!is_int($id) || $id < 0)
+            return array('resultState'=>false,'resultText'=>'Invalid symetric key id.');
+        
+        //We take the key  
+        $p = $GLOBALS['bdd']->prepare("SELECT * FROM sessionkey WHERE id = :id AND validity = 1");
+		$p->execute(array('id'=>$id));
+		$res = $p->fetch(PDO::FETCH_ASSOC);
+		$p->closeCursor();
+        
+        if(!isset($res['id']))
+            return array('resultState'=>false,'resultText'=>'This key is not into the db or it is already revoked.');
+            
+        //We revoke the key
+        $p = $GLOBALS['bdd']->prepare("UPDATE sessionkey SET validity=:validity WHERE id = :id LIMIT 1");
+		$p->execute(array('validity'=>2,'id'=>$id));
+		$p->closeCursor();
+        
+        //Done.
+        return array('resultState'=>true,'resultText'=>'Key successfully revoked');
     }
 }
 
