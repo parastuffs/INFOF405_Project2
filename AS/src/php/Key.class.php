@@ -34,14 +34,40 @@ class Key extends General
     }
     
     /**
-     * Return the keys for the different web service, if there is none, automatically create them
-     * @param $idWS the id of the WS (1 or 2)
-     * @return array('publicKey'=>String,'privateKey'=>String)
+     * Return the asymetric keys that the other WS or client have to use to access to this website. If there is none, they're created
+     * @param $idWS the id of the WS (1 or 2), if it's for a client, it's 3
+     * @return array('publicKey'=>String,'privateKey'=>String);
      */
-    public function getKeys($idWS)
+    public function getAsymKeysIn($idWS)
     {
+        //As we want the keys to send information to the WS, we need the keys that only have a public key and no private key
+        //Because it means they were created by the WS and sent here
         
-    }
+        $p = $GLOBALS['bdd']->prepare("SELECT * FROM key WHERE type = :ws AND validity=:valid AND privateKey is null ORDER BY creationDate DESC");
+		$p->execute(array('ws'=>$idWS, 'valid'=>1));
+		$vf = $p->fetch(PDO::FETCH_ASSOC);
+		$p->closeCursor();	
+        
+        if(isset($vf['id']))
+            return array('publicKey'=>Crypt::decrypt($vf['publicKey'], Crypt::passwordPublicKey($vf['salt'])),'privateKey'=>Crypt::decrypt($vf['privateKey'], Crypt::passwordPrivateKey($vf['salt'])));
+        
+        //We create the keys
+        $keys = $this->create();
+        
+        //We generate a salt
+        $salt = $this->createSalt();
+        
+        $cryptedPublicKey = Crypt::encrypt($keys['publicKey'], Crypt::passwordPublicKey($salt));
+        $cryptedPrivateKey = Crypt::encrypt($keys['privateKey'], Crypt::passwordPrivateKey($salt));
+        
+        //We insert them into the db
+        $p = $GLOBALS['bdd']->prepare("INSERT INTO key VALUES (NULL, :type, :publicKey, :privateKey, :creationDate, :salt, :validity)");
+		$p->execute(array('type'=>$idWS,'publicKey'=>$cryptedPublicKey,'privateKey'=>$cryptedPrivateKey,'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
+		$p->closeCursor();	
+        
+        //Done.
+        return array('publicKey'=>$keys['publicKey'],'privateKey'=>$keys['privateKey']);
+    }    
     
     /**
      * Display the keys used by a user for both WS (if they exist)

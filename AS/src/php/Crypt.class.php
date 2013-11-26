@@ -87,9 +87,6 @@ class Crypt extends General
         return '^àù$$^'.$salt.'ù$ùù$$ùù$czq$ù$ùcqsd$ùq$ùdqscv'.$salt.'$558';
     }
     
-    /**
-     * Give back the password for the validity
-     * 
 }
 
 ?>

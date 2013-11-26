@@ -49,7 +49,17 @@ class General
 		return true;
 	}	
  
-          
+      
+    /**
+     * Create a salt. If possible, we should use a specific function better to create random number than rand() and even mt_rand(), it's something like openssl...()  stuff
+     * @return String (in a hexadecimal format but doesn't matter...)
+     */
+    public function createSalt()
+    {    
+        $crypto = true;
+        $bytes = openssl_random_pseudo_bytes(25, $crypto);        
+        return bin2hex($bytes);       
+    }        
     
 }
 
