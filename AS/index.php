@@ -27,6 +27,7 @@ if(!file_exists('src/html/'.$page.'.php'))
 
 //We display it
 include('src/html/include/head.html');
+include('src/html/include/listing.html');
 include('src/html/'.$page.'.php');
 include('src/html/include/bottom.html');
     
