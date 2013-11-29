@@ -1,15 +1,31 @@
 <?php 
+//Do we need to launch the $_SESSION? I don't think so there is only one admin and the $_SESSION brings some problems of security... We don't need that anyway for this small website.
 
 function __autoload($className)
 {
 	require_once('src/php/'.$className.'.class.php');
 }
 
-//Just for the correction of basic errors
+//Just for the correction of basic errors (and they will be used furthermore)
 $General = new General();
-$access = new Access();
-$communication = new Communication();
-$key = new Key();
+$Access = new Access();
+$Communication = new Communication();
+$Key = new Key();
 $User = new User();
 
+//Some verifications
+if(!isset($_GET['page']))
+    $_GET['page'] = 'index';
+
+//We check which page we have to display
+$page = $_GET['page'];
+if(!preg_match('#^[a-zA-Z0-9_]{1,15}$#', $page))
+    exit('Wrong page...');
+
+if(!file_exists('src/html/'.$page.'.php'))
+    exit('Wrong page...');
+
+//We display it
+include('src/html/'.$page.'.php');
+    
 ?>
