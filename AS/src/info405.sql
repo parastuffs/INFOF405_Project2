@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost
--- Généré le: Ven 29 Novembre 2013 à 16:21
+-- Généré le: Ven 29 Novembre 2013 à 21:52
 -- Version du serveur: 5.5.24-log
 -- Version de PHP: 5.4.3
 
@@ -23,19 +23,19 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
--- Structure de la table `key`
+-- Structure de la table `asymkey`
 --
 
-CREATE TABLE IF NOT EXISTS `key` (
+CREATE TABLE IF NOT EXISTS `asymkey` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `type` varchar(10) NOT NULL,
-  `publicKey` varchar(255) NOT NULL,
-  `privateKey` varchar(255) DEFAULT NULL,
+  `owner` varchar(25) NOT NULL,
+  `publicKey` text NOT NULL,
+  `privateKey` text,
   `creationDate` int(11) NOT NULL,
   `salt` varchar(255) NOT NULL,
   `validity` tinyint(4) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
 
 -- --------------------------------------------------------
 
@@ -78,11 +78,12 @@ CREATE TABLE IF NOT EXISTS `sym` (
 CREATE TABLE IF NOT EXISTS `user` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(255) NOT NULL,
+  `husername` varchar(40) NOT NULL,
   `salt` varchar(255) NOT NULL,
   `WS1` varchar(255) NOT NULL,
   `WS2` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=19 ;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

@@ -1,7 +1,7 @@
 <?php 
 
 class Access extends General
-{    
+{        
     /**
      * Listing the access control list / users with their access 
      * @param $page int
@@ -15,7 +15,7 @@ class Access extends General
         $end = ($page+1)*25-1;
         
         //We take the number of pages
-        $p = $GLOBALS['bdd']->query("SELECT COUNT(*) AS tot FROM user");
+        $p = $this->db->query("SELECT COUNT(*) AS tot FROM user");
 		$res = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();
         $tot = ceil($res['tot']/25);
@@ -23,7 +23,7 @@ class Access extends General
             return array('resultState'=>false,'resultText'=>'Invalid number of page...','nbrPages'=>$tot);
         
         //We take the entries
-        $p = $GLOBALS['bdd']->query("SELECT * 
+        $p = $this->db->query("SELECT * 
                                         FROM user 
                                         ORDER BY id
                                         LIMIT ".$start.", ".$end);
@@ -57,7 +57,7 @@ class Access extends General
             return array('resultState'=>false,'resultText'=>'This user is not into the database.');
         
         //We take the user & check if he is in the db
-        $p = $GLOBALS['bdd']->prepare("SELECT id, salt FROM user WHERE id = :id LIMIT 1");
+        $p = $this->db->prepare("SELECT id, salt FROM user WHERE id = :id LIMIT 1");
 		$p->execute(array('id'=>$id));
 		$res = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();
@@ -75,7 +75,7 @@ class Access extends General
         $cryptedWS1 = Crypt::encrypt($WS1,Crypt::passwordWS(1,$res['salt']));
         $cryptedWS2 = Crypt::encrypt($WS2,Crypt::passwordWS(2,$res['salt']));
         
-        $p = $GLOBALS['bdd']->prepare("UPDATE user SET WS1=:ws1, WS2 = :ws2 WHERE id = :id LIMIT 1");
+        $p = $this->db->prepare("UPDATE user SET WS1=:ws1, WS2 = :ws2 WHERE id = :id LIMIT 1");
 		$p->execute(array('ws1'=>$cryptedWS1,'ws2'=>$cryptedWS2,'id'=>$res['id']));
 		$p->closeCursor();
 

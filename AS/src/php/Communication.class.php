@@ -1,7 +1,7 @@
 <?php 
 
 class Communication extends General
-{
+{   
 
     /**
      * Send a message to a specified WS server : we use a valid public key from the db, even if it is to revoke this key and giving another

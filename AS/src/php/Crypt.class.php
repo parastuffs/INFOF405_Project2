@@ -2,7 +2,7 @@
 
 class Crypt extends General
 {
-    const ALGO = 'rijndael-256';
+    const ALGO = 'rijndael-128';
     const MODE = 'cfb';
     
     /**
@@ -11,8 +11,10 @@ class Crypt extends General
      * @param $password the password
      * @return String (the encrypted text)
      */
-    public static function encrypt($text, $password, $iv)
+    public static function encrypt($text, $password)
     {
+        $password = pack('H*', sha1($password));
+        
         //We create an iv -> It is very important to do that here to be sure we never choose the same iv+password to encrypt something.
         $ivSize = mcrypt_get_iv_size(self::ALGO, self::MODE);
         $iv =  mcrypt_create_iv($ivSize, MCRYPT_RAND);
@@ -39,6 +41,8 @@ class Crypt extends General
      */
     public static function decrypt($text, $password)
     {
+        $password = pack('H*', sha1($password));
+        
         $text = base64_decode($text);
        
         //We take the iv from the cipher text
@@ -113,6 +117,26 @@ class Crypt extends General
     public static function passwordKeyDestination()
     {        
         return 'à)àçF4fez9"Eecv$558';
+    }
+    
+    /**
+     * Give back the password for the username for the user table
+     * @param $salt
+     * @return String
+     */
+    public static function passwordUsername($salt)
+    {        
+        return 'à45fzaezefzfe0979'.$salt.'8IKpml$558';
+    }
+    
+    /**
+     * Give back the hashed username
+     * @param $username
+     * @return String
+     */
+    public static function hashedUsername($username)
+    {        
+        return sha1('à)àçF45àè§è!'.$username.'èfez9"Eecv$558');
     }
 }
 

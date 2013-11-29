@@ -26,7 +26,7 @@ class General
     
     public function __construct()
     {
-        //$this->connection();
+        $this->connection();
     }
     
     /**
@@ -37,7 +37,8 @@ class General
 	{		
 		try
 		{
-			$this->db = new PDO('mysql:host=localhost;dbname=info405', 'AS', 'EFZIOnjefzoinOEF5848zef8zefef');//Second element: username, third element: password to the db.
+			$this->db = new PDO('mysql:host=localhost;dbname=info405', 'root', '');//Second element: username, third element: password to the db.
+            //$this->db = new PDO('mysql:host=localhost;dbname=info405', 'AS', 'EFZIOnjefzoinOEF5848zef8zefef');//Second element: username, third element: password to the db.
 		}
 		catch(Exception $e)
 		{

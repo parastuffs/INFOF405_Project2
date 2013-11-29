@@ -20,18 +20,19 @@ class User extends General
                 return array('resultState'=>false, 'resultText'=>'Invalid user name! It must only contain between 1 to 25 to the following character: a-z, A-Z, 0-9, ., _, -.');
         
         //Verification if there is not a similar username into the db
-        $p = $GLOBALS['bdd']->prepare("SELECT id FROM user WHERE username = :name");
-		$p->execute(array('name'=>$name));
+        $hname = Crypt::hashedUsername($name);
+        $p = $this->db->prepare("SELECT id FROM user WHERE husername = :hname LIMIT 1");
+		$p->execute(array('hname'=>$hname));
 		$vf = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();	                
         if(isset($vf['id']))
             return array('resultState'=>false, 'resultText'=>'Invalid user name! This username is already taken.');
        
         //Creation of the salt
-        $salt = $this->createSalt();
-            
-        //Encrypting of the important information (notice: we DO NOT use the salt previously created for that, it is really important obviously).
-        $cryptedName = Crypt::encrypt($name, $this->passwordForName);
+        $salt = $this->createSalt();            
+        
+        //Encrypting of the important information (notice: we can use a salt for that).
+        $cryptedName = Crypt::encrypt($name, Crypt::passwordUsername($salt));
         
         //We also crypt the access to WS1 and WS2 (we can now use the salt with no problem :))
         $WS1=0;
@@ -45,12 +46,12 @@ class User extends General
         $cryptedWS2 = Crypt::encrypt($WS2,Crypt::passwordWS(2,$salt));
         
         //Insertion into the db (user)
-        $p = $GLOBALS['bdd']->prepare("INSERT INTO user VALUES (NULL, :username, :salt, :ws1, :ws2)");
-		$p->execute(array('username'=>$cryptedName,'salt'=>$salt,'ws1'=>$cryptedWS1, 'ws2'=>$cryptedWS2));
+        $p = $this->db->prepare("INSERT INTO user VALUES (NULL, :username, :hname, :salt, :ws1, :ws2)");
+		$p->execute(array('username'=>$cryptedName,'hname'=>$hname,'salt'=>$salt,'ws1'=>$cryptedWS1, 'ws2'=>$cryptedWS2));
 		$p->closeCursor();	
         
         //We take the id of the user
-        $p = $GLOBALS['bdd']->prepare("SELECT id FROM user WHERE username = :username ORDER BY id DESC LIMIT 1");
+        $p = $this->db->prepare("SELECT id FROM user WHERE username = :username ORDER BY id DESC LIMIT 1");
 		$p->execute(array('username'=>$cryptedName));
 		$vf = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();	

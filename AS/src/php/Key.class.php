@@ -5,7 +5,7 @@
  * Y'a des trucs que je ne comprends pas vraiment, comme l'histoire de protéger les clefs par un mot de passe (que je n'ai pas implémenté mais openssl le permet grace aux paramètres passés)... C'est utile pour nous? 
  */
 class Key extends General
-{
+{    
     const TIME_SESSION_KEY = 36000;//The time a session key is valid (10 hours here)
     
     /**
@@ -18,11 +18,13 @@ class Key extends General
         $config = array(
                 'digest_alg' => 'sha512',
                 'private_key_bits' => 4096,
-                'private_key_type' => 'OPENSSL_KEYTYPE_RSA',//it's the default type, but like that we directly see that we use RSA                
+                'private_key_type' => OPENSSL_KEYTYPE_RSA,//it's the default type, but like that we directly see that we use RSA                
                 );
         
         //We generate the private and public keys
-        $keys = openssl_pkey_new($config);
+        $keys = @openssl_pkey_new($config);
+        if($keys === false)
+            exit('Problem with openssl... The server can\'t use it...');
         
         //We take the private key
         openssl_pkey_export($keys, $privateKey);
@@ -37,12 +39,12 @@ class Key extends General
     
     /**
      * Return the asymetric keys that the other WS or client have to use to access to a server. If there is none, they're created
-     * @param $owner the server for which the keys are created. If 'AS' the private key is also saved.
+     * @param $owner the server for which the keys are created. If 'AS' the private key is also saved. If "CL".$id it is a client
      * @return array('publicKey'=>String,'privateKey'=>String);
      */
     public function getAsymKeysIn($owner)
     {        
-        $p = $GLOBALS['bdd']->prepare("SELECT * FROM key WHERE owner = :ws AND validity=:valid AND privateKey is not null ORDER BY creationDate DESC LIMIT 1");
+        $p = $this->db->prepare("SELECT * FROM asymkey WHERE owner = :ws AND validity=:valid AND privateKey = '' ORDER BY creationDate DESC LIMIT 1");
 		$p->execute(array('ws'=>$owner, 'valid'=>1));
 		$vf = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();	
@@ -60,13 +62,14 @@ class Key extends General
         if($owner == 'AS')
             $cryptedPrivateKey = Crypt::encrypt($keys['privateKey'], Crypt::passwordPrivateKey($salt));
         else
-            $cryptedPrivateKey = null;
+            $cryptedPrivateKey = '';
         
         //We insert them into the db
-        $p = $GLOBALS['bdd']->prepare("INSERT INTO key VALUES (NULL, :owner, :publicKey, :privateKey, :creationDate, :salt, :validity)");
+        $p = $this->db->prepare("INSERT INTO asymkey VALUES (NULL, :owner, :publicKey, :privateKey, :creationDate, :salt, :validity)");
 		$p->execute(array('owner'=>$owner,'publicKey'=>$cryptedPublicKey,'privateKey'=>$cryptedPrivateKey,'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
 		$p->closeCursor();	
-        
+        echo 'Insertion sensee etre faite...<br/>';
+
         //Done.
         return array('publicKey'=>$keys['publicKey'],'privateKey'=>$keys['privateKey']);
     }   
@@ -79,7 +82,7 @@ class Key extends General
      */
     public function getSymKey($origin, $destination)
     {        
-       $p = $GLOBALS['bdd']->prepare("SELECT * FROM sessionkey WHERE origin = :ori AND destination = :dest validity=:valid ORDER BY creationDate DESC LIMIT 1");
+       $p = $this->db->prepare("SELECT * FROM sessionkey WHERE origin = :ori AND destination = :dest validity=:valid ORDER BY creationDate DESC LIMIT 1");
 		$p->execute(array('ori'=>Crypt::encrypt($origin, Crypt::passwordKeyOrigin()),'dest'=>Crypt::encrypt($destination, Crypt::passwordKeyOrigin()),'valid'=>1));
 		$vf = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();	
@@ -109,7 +112,7 @@ class Key extends General
         $destination = Crypt::encrypt($destination, Crypt::passwordKeyDestination());
         
         //We insert them into the db
-        $p = $GLOBALS['bdd']->prepare("INSERT INTO sessionkey VALUES (NULL, :key, :origin, :destination, :salt, :creationDate, :validity)");
+        $p = $this->db->prepare("INSERT INTO sessionkey VALUES (NULL, :key, :origin, :destination, :salt, :creationDate, :validity)");
 		$p->execute(array('key'=>$cryptedKey,'origin'=>$origin,'destination'=>$destination,'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
 		$p->closeCursor();	
         
@@ -127,7 +130,7 @@ class Key extends General
         if(!is_int($id) || $id < 0)
             return array('resultState'=>false,'resultText'=>'Invalid user id.');
             
-        $p = $GLOBALS['bdd']->prepare("SELECT * FROM user WHERE id = :id ORDER BY creationDate DESC");
+        $p = $this->db->prepare("SELECT * FROM user WHERE id = :id ORDER BY creationDate DESC");
 		$p->execute(array('id'=>$id));
 		$res = $p->fetchAll(PDO::FETCH_ASSOC);
 		$p->closeCursor();
@@ -157,7 +160,7 @@ class Key extends General
             return array('resultState'=>false,'resultText'=>'Invalid asymetric key id.');
         
         //We take the key  
-        $p = $GLOBALS['bdd']->prepare("SELECT * FROM key WHERE id = :id AND validity = 1");
+        $p = $this->db->prepare("SELECT * FROM asymkey WHERE id = :id AND validity = 1");
 		$p->execute(array('id'=>$id));
 		$res = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();
@@ -166,7 +169,7 @@ class Key extends General
             return array('resultState'=>false,'resultText'=>'This key is not into the db or it is already revoked.');
             
         //We revoke the key
-        $p = $GLOBALS['bdd']->prepare("UPDATE key SET validity=:validity WHERE id = :id LIMIT 1");
+        $p = $this->db->prepare("UPDATE key SET validity=:validity WHERE id = :id LIMIT 1");
 		$p->execute(array('validity'=>2,'id'=>$id));
 		$p->closeCursor();
         
@@ -184,7 +187,7 @@ class Key extends General
             return array('resultState'=>false,'resultText'=>'Invalid symetric key id.');
         
         //We take the key  
-        $p = $GLOBALS['bdd']->prepare("SELECT * FROM sessionkey WHERE id = :id AND validity = 1");
+        $p = $this->db->prepare("SELECT * FROM sessionkey WHERE id = :id AND validity = 1");
 		$p->execute(array('id'=>$id));
 		$res = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();
@@ -193,7 +196,7 @@ class Key extends General
             return array('resultState'=>false,'resultText'=>'This key is not into the db or it is already revoked.');
             
         //We revoke the key
-        $p = $GLOBALS['bdd']->prepare("UPDATE sessionkey SET validity=:validity WHERE id = :id LIMIT 1");
+        $p = $this->db->prepare("UPDATE sessionkey SET validity=:validity WHERE id = :id LIMIT 1");
 		$p->execute(array('validity'=>2,'id'=>$id));
 		$p->closeCursor();
         
