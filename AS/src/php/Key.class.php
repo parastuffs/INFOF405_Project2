@@ -133,8 +133,8 @@ class Key extends General
         foreach($res as $key => $value)
         {
             $key = Crypt::decrypt($res[$key]['key'], Crypt::passwordSessionKey($res[$key]['salt']));
-            $origin = Crypt::decrypt($res[$key]['origin'], Crypt::passwordKeyOrigin($res[$key]['salt']));
-            $destination = Crypt::decrypt($res[$key]['destination'], Crypt::passwordKeyDestination($res[$key]['salt']));
+            $origin = Crypt::decrypt($res[$key]['origin'], Crypt::passwordKeyOrigin());
+            $destination = Crypt::decrypt($res[$key]['destination'], Crypt::passwordKeyDestination());
             $tab['keys'][$res[$key]['id']] = array('key'=>$key,'origin'=>$origin,'destination'=>$destination);
         }
         
