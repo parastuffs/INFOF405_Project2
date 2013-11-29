@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost
--- Généré le: Mar 26 Novembre 2013 à 16:15
+-- Généré le: Ven 29 Novembre 2013 à 16:21
 -- Version du serveur: 5.5.24-log
 -- Version de PHP: 5.4.3
 
@@ -28,7 +28,7 @@ SET time_zone = "+00:00";
 
 CREATE TABLE IF NOT EXISTS `key` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `type` tinyint(4) NOT NULL,
+  `type` varchar(10) NOT NULL,
   `publicKey` varchar(255) NOT NULL,
   `privateKey` varchar(255) DEFAULT NULL,
   `creationDate` int(11) NOT NULL,

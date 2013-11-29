@@ -25,6 +25,11 @@ if(!preg_match('#^[a-zA-Z0-9_]{1,15}$#', $page))
 if(!file_exists('src/html/'.$page.'.php'))
     exit('Wrong page...');
 
+//We check if the user has the rights to access to this page
+$vf = $Access->verificationIsAdmin();
+if($vf['resultState'] === false)    
+    exit($vf['resultText']);
+    
 //We display it
 include('src/html/include/head.html');
 include('src/html/include/listing.html');

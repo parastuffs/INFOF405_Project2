@@ -82,6 +82,15 @@ class Access extends General
         //Done.      
         return array('resultState'=>true,'resultText'=>'The authorizations for this user have been changed.');
     }
+    
+    /**
+     * Verification if the current person has the right to access to this page
+     * @return array('resultState'=>bool,'resultText'=>String)
+     */
+    public function verificationIsAdmin()
+    {
+        ;//TODO
+    }
 }
 
 ?>
