@@ -1,14 +1,7 @@
 <?php 
 /* Important notice !
-As all the information must be encrypted into the db, I've decided to be a little paranoid and really encrypt the most
-available information into it... So it is not possible to know for a hacker who stole the db how to join two tables first
-of all thanks to the unique salt created for each person which is, in fact, like a password for the information stored
-intot the db. The only uncrypted information are the id of each entry, as there are useless for the hackers there is no
-need to encrypt them I think :).
- -> Plus vraiment d'actualité en fait vu que j'ai rassemblé les deux tables en une... 
  
 Is it really useful to create a specific salt for each person btw :/? If we use a common salt, isn't it ok also :/? 
-
 Do not forget to activate the "open_ssl" module in wamp!
 
 TODO : en fait, il faut peut-être vérifier lors de la création d'un mot de passe et d'un iv qu'on est sûr de ne pas les avoir
@@ -55,7 +48,7 @@ class General
      * @param $minimum The minimum number of bytes of the salt
      * @return String (in a hexadecimal format but doesn't matter...)
      */
-    public function createSalt(int $minimum=25)
+    public function createSalt($minimum=25)
     {    
         $crypto = true;
         $bytes = openssl_random_pseudo_bytes($minimum, $crypto);        
