@@ -37,23 +37,19 @@ class Key extends General
     
     /**
      * Return the asymetric keys that the other WS or client have to use to access to this website. If there is none, they're created
-     * @param $idWS the id of the WS (1 or 2), if it's for a client, it's 3
      * @return array('publicKey'=>String,'privateKey'=>String);
      */
-    public function getAsymKeysIn($idWS)
-    {
-        //As we want the keys to send information to the WS, we need the keys that only have a public key and no private key
-        //Because it means they were created by the WS and sent here
-        
-        $p = $GLOBALS['bdd']->prepare("SELECT * FROM key WHERE type = :ws AND validity=:valid AND privateKey is null ORDER BY creationDate DESC");
-		$p->execute(array('ws'=>$idWS, 'valid'=>1));
+    public function getAsymKeysIn()
+    {        
+        $p = $GLOBALS['bdd']->prepare("SELECT * FROM key WHERE type = :ws AND validity=:valid AND privateKey is not null ORDER BY creationDate DESC LIMIT 1");
+		$p->execute(array('ws'=>'AS', 'valid'=>1));
 		$vf = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();	
         
         if(isset($vf['id']))
             return array('publicKey'=>Crypt::decrypt($vf['publicKey'], Crypt::passwordPublicKey($vf['salt'])),'privateKey'=>Crypt::decrypt($vf['privateKey'], Crypt::passwordPrivateKey($vf['salt'])));
         
-        //We create the keys
+        //If there is none, they're created (but we should display a message that's not the right way to access to get new keys)
         $keys = $this->create();
         
         //We generate a salt
