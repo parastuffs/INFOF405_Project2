@@ -99,22 +99,20 @@ class Crypt extends General
     
     /**
      * Give back the password for the origin for the sessionKey table
-     * @param $salt string the salt
      * @return String
      */
-    public static function passwordKeyOrigin($salt)
+    public static function passwordKeyOrigin()
     {        
-        return 'à)àç)&é)éàzgecv'.$salt.'$558';
+        return 'à)àç)&é)éàzgecv$558';
     }
     
     /**
      * Give back the password for the destination for the sessionKey table
-     * @param $salt string the salt
      * @return String
      */
-    public static function passwordKeyDestination($salt)
+    public static function passwordKeyDestination()
     {        
-        return 'à)àçF4fez9"Eecv'.$salt.'$558';
+        return 'à)àçF4fez9"Eecv$558';
     }
 }
 

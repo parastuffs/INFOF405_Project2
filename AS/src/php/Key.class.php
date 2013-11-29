@@ -68,12 +68,31 @@ class Key extends General
     }   
     
     /**
+     * Return the symetric key actually used between two servers
+     * @param $origin 
+     * @param $destination
+     * @return array('key'=>String,'creationDate'=>int);
+     */
+    public function getSymKey($origin, $destination)
+    {        
+       $p = $GLOBALS['bdd']->prepare("SELECT * FROM sessionkey WHERE origin = :ori AND destination = :dest validity=:valid ORDER BY creationDate DESC LIMIT 1");
+		$p->execute(array('ori'=>Crypt::encrypt($origin, Crypt::passwordKeyOrigin()),'dest'=>Crypt::encrypt($destination, Crypt::passwordKeyOrigin()),'valid'=>1));
+		$vf = $p->fetch(PDO::FETCH_ASSOC);
+		$p->closeCursor();	
+        
+        if(isset($vf['id']))
+            return array('key'=>Crypt::decrypt($vf['key'], Crypt::passwordSessionKey($vf['salt'])),'creationDate'=>$vf['creationDate']);
+        else
+            return array('key'=>'','creationDate'=>0);
+    }
+    
+    /**
      * Return a new symetric key to be used to communicate. If it's a client, change the below 'ID_CLIENT' by their id.
      * @param $origin the origin (one from these: 'WS1', 'WS2', 'AS', 'ID_CLIENT)
      * @param $destination the destination (one from these: 'WS1', 'WS2', 'AS', 'ID_CLIENT')
      * @return array('key'=>String,'validityTime'=>int);
      */
-    public function getNewSymKeys($origin, $destination)
+    public function getNewSymKey($origin, $destination)
     {
         //We create the symetric key based on a salt
         $key = $this->createSalt(50);
@@ -82,8 +101,8 @@ class Key extends General
         $salt = $this->createSalt();
         
         $cryptedKey = Crypt::encrypt($key, Crypt::passwordSessionKey($salt));
-        $origin = Crypt::encrypt($origin, Crypt::passwordKeyOrigin($salt));
-        $destination = Crypt::encrypt($destination, Crypt::passwordKeyDestination($salt));
+        $origin = Crypt::encrypt($origin, Crypt::passwordKeyOrigin());
+        $destination = Crypt::encrypt($destination, Crypt::passwordKeyDestination());
         
         //We insert them into the db
         $p = $GLOBALS['bdd']->prepare("INSERT INTO sessionkey VALUES (NULL, :key, :origin, :destination, :salt, :creationDate, :validity)");
