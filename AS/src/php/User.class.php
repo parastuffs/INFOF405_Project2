@@ -6,7 +6,7 @@ class User extends General
      * Insertion of the new client into the db
      * @param $name String the name of the client
      * @param $access array('WS1'=>bool,'WS2'=>bool) the access that the client have for each website
-     * @return array('resultState'=>bool,'resultText'=>String)
+     * @return array('resultState'=>bool,'resultText'=>String,'id'=>int)
      */
     public function insertNewClient($name, $access)
     {
@@ -49,8 +49,17 @@ class User extends General
 		$p->execute(array('username'=>$cryptedName,'salt'=>$salt,'ws1'=>$cryptedWS1, 'ws2'=>$cryptedWS2));
 		$p->closeCursor();	
         
+        //We take the id of the user
+        $p = $GLOBALS['bdd']->prepare("SELECT id FROM user WHERE username = :username ORDER BY id DESC LIMIT 1");
+		$p->execute(array('username'=>$cryptedName));
+		$vf = $p->fetch(PDO::FETCH_ASSOC);
+		$p->closeCursor();	
+        
+        if(!isset($vf['id']))
+            return array('resultState'=>false,'resultText'=>'The user wasn\'t inserted correctly into the db...');
+        
         //Done :D
-        return array('resultState'=>true, 'resultText'=>'Member successfully created!');
+        return array('resultState'=>true, 'resultText'=>'Member successfully created!','id'=>$vf['id']);
     }
     
 }

@@ -36,13 +36,14 @@ class Key extends General
     }
     
     /**
-     * Return the asymetric keys that the other WS or client have to use to access to this website. If there is none, they're created
+     * Return the asymetric keys that the other WS or client have to use to access to a server. If there is none, they're created
+     * @param $owner the server for which the keys are created. If 'AS' the private key is also saved.
      * @return array('publicKey'=>String,'privateKey'=>String);
      */
-    public function getAsymKeysIn()
+    public function getAsymKeysIn($owner)
     {        
-        $p = $GLOBALS['bdd']->prepare("SELECT * FROM key WHERE type = :ws AND validity=:valid AND privateKey is not null ORDER BY creationDate DESC LIMIT 1");
-		$p->execute(array('ws'=>'AS', 'valid'=>1));
+        $p = $GLOBALS['bdd']->prepare("SELECT * FROM key WHERE owner = :ws AND validity=:valid AND privateKey is not null ORDER BY creationDate DESC LIMIT 1");
+		$p->execute(array('ws'=>$owner, 'valid'=>1));
 		$vf = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();	
         
@@ -56,11 +57,14 @@ class Key extends General
         $salt = $this->createSalt();
         
         $cryptedPublicKey = Crypt::encrypt($keys['publicKey'], Crypt::passwordPublicKey($salt));
-        $cryptedPrivateKey = Crypt::encrypt($keys['privateKey'], Crypt::passwordPrivateKey($salt));
+        if($owner == 'AS')
+            $cryptedPrivateKey = Crypt::encrypt($keys['privateKey'], Crypt::passwordPrivateKey($salt));
+        else
+            $cryptedPrivateKey = null;
         
         //We insert them into the db
-        $p = $GLOBALS['bdd']->prepare("INSERT INTO key VALUES (NULL, :type, :publicKey, :privateKey, :creationDate, :salt, :validity)");
-		$p->execute(array('type'=>$idWS,'publicKey'=>$cryptedPublicKey,'privateKey'=>$cryptedPrivateKey,'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
+        $p = $GLOBALS['bdd']->prepare("INSERT INTO key VALUES (NULL, :owner, :publicKey, :privateKey, :creationDate, :salt, :validity)");
+		$p->execute(array('owner'=>$owner,'publicKey'=>$cryptedPublicKey,'privateKey'=>$cryptedPrivateKey,'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
 		$p->closeCursor();	
         
         //Done.

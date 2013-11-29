@@ -9,6 +9,11 @@ utilisé par hasard ailleurs (probabilité infime mais bon)... Ou bien on écrit
 comme ça... Mais en tout cas, il y le chiffrement des noms qui utilisent d'office le même password, donc il serait peut-être
 intéressant de s'assurer que l'iv généré ne correspond à un autre précédemment utilisé...
 
+TODO (IMPORTANT) : je ne connais pas le nom officiel de ce genre d'attaque, mais il faut générer un token valide pour un certain 
+temps à rajouter à chaque url de page. J'expliquerai plus en détail l'attaque si vous ne voyez pas l'utilité ce token.
+Note à moi-même: même si il n'y a pas de pass à la session d'utilisateur il suffit que l'admin reçoive un lien avec une url via
+ses mails ou simplement sur un site web qu'il visite :/.
+
 En fait, il dit que toutes les informations stockées dans la base de donnée doivent être chiffrées... C'est à prendre à la lettre
 ça? Car chiffrer un salt, c'est pour le moins inutile...
 */
