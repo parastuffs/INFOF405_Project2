@@ -1,5 +1,6 @@
 <?php 
 //Do we need to launch the $_SESSION? I don't think so there is only one admin and the $_SESSION brings some problems of security... We don't need that anyway for this small website.
+include('src/ini.php');
 
 function __autoload($className)
 {
@@ -12,6 +13,9 @@ $Access = new Access();
 $Communication = new Communication();
 $Key = new Key();
 $User = new User();
+$Ini = new Ini();
+
+$Ini->serverKeys();
 
 //Some verifications
 if(!isset($_GET['page']))
@@ -19,7 +23,7 @@ if(!isset($_GET['page']))
 
 //We check which page we have to display
 $page = $_GET['page'];
-if(!preg_match('#^[a-zA-Z0-9_]{1,15}$#', $page))
+if(!preg_match('#^[a-zA-Z0-9_]{1,25}$#', $page))
     exit('Wrong page...');
 
 if(!file_exists('src/html/'.$page.'.php'))

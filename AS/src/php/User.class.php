@@ -63,7 +63,6 @@ class User extends General
         return array('resultState'=>true, 'resultText'=>'Member successfully created!','id'=>$vf['id']);
     }
     
-    
 }
 
 ?>

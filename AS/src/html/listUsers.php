@@ -30,11 +30,11 @@ else
     foreach($list['user'] as $key => $value)
     {
         $accessWS1 = 'yes';
+        $accessWS2 = 'yes';
         if($list['user'][$key]['WS1'] === false)
             $accessWS1 = 'no';
         if($list['user'][$key]['WS2'] === false)
             $accessWS2 = 'no';
-        $accessWS2 = 'yes';
         
         echo '<tr>';
         echo '  <td>'.htmlspecialchars($key).'</td>';

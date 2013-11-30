@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Client: localhost
--- Généré le: Ven 29 Novembre 2013 à 21:52
+-- Généré le: Sam 30 Novembre 2013 à 23:29
 -- Version du serveur: 5.5.24-log
 -- Version de PHP: 5.4.3
 
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS `asymkey` (
   `salt` varchar(255) NOT NULL,
   `validity` tinyint(4) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -46,26 +46,13 @@ CREATE TABLE IF NOT EXISTS `asymkey` (
 CREATE TABLE IF NOT EXISTS `sessionkey` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `key` varchar(255) NOT NULL,
+  `horigin` varchar(40) NOT NULL,
   `origin` varchar(255) NOT NULL,
   `destination` varchar(255) NOT NULL,
+  `hdestination` varchar(40) NOT NULL,
   `salt` varchar(255) NOT NULL,
   `creationDate` int(11) NOT NULL,
   `validity` tinyint(4) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
-
--- --------------------------------------------------------
-
---
--- Structure de la table `sym`
---
-
-CREATE TABLE IF NOT EXISTS `sym` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user` varchar(255) NOT NULL,
-  `key` varchar(255) NOT NULL,
-  `creationDate` varchar(255) NOT NULL,
-  `validity` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
@@ -83,7 +70,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `WS1` varchar(255) NOT NULL,
   `WS2` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=19 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
