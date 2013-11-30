@@ -7,6 +7,7 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -22,13 +23,17 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SealedObject;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ServerSocketFactory;
 
 
 public class Client {
 	
 	private Socket sockAS;
+	private Socket sockWS1;
 	private final int PORT_AS = 42000;
+	private final int PORT_WS1 = 2013;
 	private byte[] r1;
 	private byte[] r3;
 	private final int CLIENT_ID = 10;
@@ -80,14 +85,6 @@ public class Client {
 		//TODO adding the private key to the list is temporary, for testing purpose only
 		message.add(this.clientPrivateKey);
 		
-		//Populate the list with what we want to encrypt TODO remove dead code
-		//toBeCrypted.add(this.CLIENT_ID);
-		//toBeCrypted.add(this.r3);
-		
-		//TODO remove encryptedList, dead code.
-		//SealedObject encryptedList = new SealedObject(toBeCrypted, ciph);
-		//message.add(encryptedList);
-		
 		SealedObject encryptedClientID = new SealedObject(CLIENT_ID, ciph);
 		SealedObject encryptedNonce = new SealedObject(this.r3, ciph);
 		message.add(encryptedClientID);
@@ -105,6 +102,28 @@ public class Client {
 		
 	}
 	
+	public void testAESConnection() throws UnknownHostException, IOException, IllegalBlockSizeException, InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException {
+		this.sockWS1 = new Socket("localhost", PORT_WS1);//Connection to WS
+		
+		
+		String key = "Ivenoideawhatodo";
+		byte[] raw = key.getBytes();
+		SecretKeySpec sks = new SecretKeySpec(raw, "AES");
+		Cipher ciph = Cipher.getInstance("AES/CBC/PKCS5Padding");
+		ciph.init(Cipher.ENCRYPT_MODE, sks, new IvParameterSpec(new byte[16]));
+		
+		SealedObject encryptedMessage = new SealedObject("Hello, this is dog.", ciph);
+		
+		System.out.println("Sending to server");
+		
+		ObjectOutputStream outWS = new ObjectOutputStream(sockWS1.getOutputStream());
+		outWS.writeObject(encryptedMessage);
+		outWS.flush();
+		
+		sockAS.close();
+		
+	}
+	
 	
 	private void generateKeys() throws NoSuchAlgorithmException {
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -116,8 +135,8 @@ public class Client {
 		this.clientPublicKey = pubKey;
 		this.clientPrivateKey = privKey;
 		
-		System.out.println("Client Private key: "+privKey);
-		System.out.println("Client Public key: "+pubKey);
+		//System.out.println("Client Private key: "+privKey);
+		//System.out.println("Client Public key: "+pubKey);
 	}
 	
 	
@@ -127,12 +146,15 @@ public class Client {
 		
 		Thread t = new Thread(new TestServer());
 		t.start();
+		Thread t1 = new Thread(new TestAESServer());
+		t1.start();
 		
 		try {
 			Client c = new Client();
 			c.requestAccessBlackBoard();
+			c.testAESConnection();
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
-				| IllegalBlockSizeException | IOException e) {
+				| IllegalBlockSizeException | IOException | InvalidAlgorithmParameterException e) {
 			e.printStackTrace();
 		}
 	}

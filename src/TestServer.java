@@ -47,7 +47,7 @@ public class TestServer implements Runnable{
 	            
 	            //TODO the private key is transmitted for testing purpose only
 	            PrivateKey privKey = (PrivateKey)distantObjects.get(2);
-	            System.out.println("private key on the server: "+privKey);
+	            //System.out.println("private key on the server: "+privKey);
 	            
 	            SealedObject sealedClientID = (SealedObject)distantObjects.get(3);
 	            String algo = sealedClientID.getAlgorithm();
