@@ -75,7 +75,7 @@ public class Client {
 		message.add(AS_ID);
 		
 		Cipher ciph = Cipher.getInstance("RSA");//RSA encryption
-		ciph.init(Cipher.ENCRYPT_MODE, this.clientPrivateKey);//TODO WARNING/!\ we currently encrypt the message with the client public key.
+		ciph.init(Cipher.ENCRYPT_MODE, this.clientPublicKey);//TODO WARNING/!\ we currently encrypt the message with the client public key.
 		
 		//TODO adding the private key to the list is temporary, for testing purpose only
 		message.add(this.clientPrivateKey);
