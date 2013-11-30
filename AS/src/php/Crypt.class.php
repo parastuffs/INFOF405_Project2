@@ -47,10 +47,10 @@ class Crypt extends General
        
         //We take the iv from the cipher text
         $ivSize = mcrypt_get_iv_size(self::ALGO, self::MODE);
-        $iv = susbtr($text, 0, $iv_size);
+        $iv = substr($text, 0, $ivSize);
         
         //We take the real cipher text
-        $text = susbtr($text, $iv_size);
+        $text = substr($text, $ivSize);
         
         //We decrypt.
         $text = mcrypt_decrypt(self::ALGO, $password, $text, self::MODE, $iv);
