@@ -17,7 +17,7 @@ class Key extends General
         //We make the configuration for the creation of keys (@see "http://www.php.net/manual/fr/function.openssl-csr-new.php" for the config array)
         $config = array(
                 'digest_alg' => 'sha512',
-                'private_key_bits' => 4096,
+                'private_key_bits' => 1024,
                 'private_key_type' => OPENSSL_KEYTYPE_RSA,//it's the default type, but like that we directly see that we use RSA                
                 );
         
@@ -38,22 +38,36 @@ class Key extends General
     }
     
     /**
-     * Return the asymetric keys that the other WS or client have to use to access to a server. If there is none, they're created
+     * Return the asymetric key that the other WS or client have to use to access to a server.
      * @param $owner the server for which the keys are created. If 'AS' the private key is also saved. If "CL".$id it is a client
-     * @return array('publicKey'=>String,'privateKey'=>String);
+     * @return array('publicKey'=>String,'privateKey'=>String,'id'=>int);
      */
     public function getAsymKeysIn($owner)
     {        
-        $p = $this->db->prepare("SELECT * FROM asymkey WHERE owner = :ws AND validity=:valid AND privateKey = '' ORDER BY creationDate DESC LIMIT 1");
+        $p = $this->db->prepare("SELECT * FROM asymkey WHERE owner = :ws AND validity=:valid ORDER BY validity, creationDate DESC LIMIT 1");
 		$p->execute(array('ws'=>$owner, 'valid'=>1));
 		$vf = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();	
         
         if(isset($vf['id']))
-            return array('publicKey'=>Crypt::decrypt($vf['publicKey'], Crypt::passwordPublicKey($vf['salt'])),'privateKey'=>Crypt::decrypt($vf['privateKey'], Crypt::passwordPrivateKey($vf['salt'])));
-        
-        //If there is none, they're created (but we should display a message that's not the right way to access to get new keys)
-        $keys = $this->create();
+        {
+            $privateKey = '';
+            if(!empty($vf['privateKey']))
+                $privateKey = Crypt::decrypt($vf['privateKey'], Crypt::passwordPrivateKey($vf['salt']));
+            return array('publicKey'=>Crypt::decrypt($vf['publicKey'], Crypt::passwordPublicKey($vf['salt'])),'privateKey'=>$privateKey,'id'=>$vf['id']);
+        }
+        else
+            return array('publicKey'=>'','privateKey'=>'','id'=>'');
+    }   
+    
+    /**
+     * Return a new asymetric key to be used to communicate. If it's a client, change the below 'ID_CLIENT' by their id.
+     * @param $owner the origin (one from these: 'WS1', 'WS2', 'AS', 'CL'.$ID_CLIENT)
+     * @return array('key'=>String,'validityTime'=>int);
+     */
+    public function getNewAsymKey($owner)
+    {
+       $keys = $this->create();
         
         //We generate a salt
         $salt = $this->createSalt();
@@ -68,11 +82,16 @@ class Key extends General
         $p = $this->db->prepare("INSERT INTO asymkey VALUES (NULL, :owner, :publicKey, :privateKey, :creationDate, :salt, :validity)");
 		$p->execute(array('owner'=>$owner,'publicKey'=>$cryptedPublicKey,'privateKey'=>$cryptedPrivateKey,'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
 		$p->closeCursor();	
-        echo 'Insertion sensee etre faite...<br/>';
-
-        //Done.
-        return array('publicKey'=>$keys['publicKey'],'privateKey'=>$keys['privateKey']);
-    }   
+        
+        //We take the id
+        $p = $this->db->prepare("SELECT * FROM asymkey WHERE owner = :ws AND validity=:valid AND privateKey = '' ORDER BY creationDate DESC LIMIT 1");
+		$p->execute(array('ws'=>$owner, 'valid'=>1));
+		$vf = $p->fetch(PDO::FETCH_ASSOC);
+		$p->closeCursor();	
+        
+        //We return the created key and the time it is valid.
+        return array('publicKey'=>$keys['publicKey'],'privateKey'=>$keys['privateKey'],'id'=>$vf['id']);
+    } 
     
     /**
      * Return the symetric key actually used between two servers
@@ -82,7 +101,7 @@ class Key extends General
      */
     public function getSymKey($origin, $destination)
     {        
-       $p = $this->db->prepare("SELECT * FROM sessionkey WHERE origin = :ori AND destination = :dest validity=:valid ORDER BY creationDate DESC LIMIT 1");
+        $p = $this->db->prepare("SELECT * FROM sessionkey WHERE origin = :ori AND destination = :dest validity=:valid ORDER BY creationDate DESC LIMIT 1");
 		$p->execute(array('ori'=>Crypt::encrypt($origin, Crypt::passwordKeyOrigin()),'dest'=>Crypt::encrypt($destination, Crypt::passwordKeyOrigin()),'valid'=>1));
 		$vf = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();	
@@ -95,8 +114,8 @@ class Key extends General
     
     /**
      * Return a new symetric key to be used to communicate. If it's a client, change the below 'ID_CLIENT' by their id.
-     * @param $origin the origin (one from these: 'WS1', 'WS2', 'AS', 'ID_CLIENT)
-     * @param $destination the destination (one from these: 'WS1', 'WS2', 'AS', 'ID_CLIENT')
+     * @param $origin the origin (one from these: 'WS1', 'WS2', 'AS', 'CL'.$ID_CLIENT)
+     * @param $destination the destination (one from these: 'WS1', 'WS2', 'AS', 'CL'.$ID_CLIENT)
      * @return array('key'=>String,'validityTime'=>int);
      */
     public function getNewSymKey($origin, $destination)
@@ -112,8 +131,8 @@ class Key extends General
         $destination = Crypt::encrypt($destination, Crypt::passwordKeyDestination());
         
         //We insert them into the db
-        $p = $this->db->prepare("INSERT INTO sessionkey VALUES (NULL, :key, :origin, :destination, :salt, :creationDate, :validity)");
-		$p->execute(array('key'=>$cryptedKey,'origin'=>$origin,'destination'=>$destination,'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
+        $p = $this->db->prepare("INSERT INTO sessionkey VALUES (NULL, :key, :origin, :horigin, :destination, :hdestination, :salt, :creationDate, :validity)");
+		$p->execute(array('key'=>$cryptedKey,'origin'=>$origin,'horigin'=>Crypt::hashedId($origin),'destination'=>$destination,'hdestination'=>Crypt::hashedId($destination),'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
 		$p->closeCursor();	
         
         //We return the created key and the time it is valid.
@@ -127,11 +146,8 @@ class Key extends General
      */
     public function displayUserKeys($id)
     {
-        if(!is_int($id) || $id < 0)
-            return array('resultState'=>false,'resultText'=>'Invalid user id.');
-            
-        $p = $this->db->prepare("SELECT * FROM user WHERE id = :id ORDER BY creationDate DESC");
-		$p->execute(array('id'=>$id));
+        $p = $this->db->prepare("SELECT * FROM sessionkey WHERE (horigin = :hid OR hdestination = :hid) ORDER BY validity, creationDate DESC");
+		$p->execute(array('hid'=>Crypt::hashedId($id)));
 		$res = $p->fetchAll(PDO::FETCH_ASSOC);
 		$p->closeCursor();
         
@@ -142,7 +158,7 @@ class Key extends General
             $key = Crypt::decrypt($res[$key]['key'], Crypt::passwordSessionKey($res[$key]['salt']));
             $origin = Crypt::decrypt($res[$key]['origin'], Crypt::passwordKeyOrigin());
             $destination = Crypt::decrypt($res[$key]['destination'], Crypt::passwordKeyDestination());
-            $tab['keys'][$res[$key]['id']] = array('key'=>$key,'origin'=>$origin,'destination'=>$destination);
+            $tab['keys'][$res[$key]['id']] = array('key'=>$key,'origin'=>$origin,'destination'=>$destination,'creationDate'=>date("d-m-Y at h",$res[$key]['creationDate']),'validity'=>$res[$key]['validity']);
         }
         
         //Done.
@@ -151,17 +167,21 @@ class Key extends General
     
     /**
      * Revocation of a specified asymmetric key into the db (but we have to send the information to the concerned WS or client too!)
-     * @param $id the key id to revoke
+     * @param $id the id of the owner
+     * @param $keyId the key id to revoke
      * @return array('resultState'=>bool,'resultText'=>String)
      */
-    public function revocationAsymmetricKey($id)
+    public function revocationAsymmetricKey($id, $keyId)
     {
-        if(!is_int($id) || $id < 0)
+        if(!preg_match('#^[0-9]{1,}$#',$keyId) || $keyId < 0)
             return array('resultState'=>false,'resultText'=>'Invalid asymetric key id.');
-        
+                
+        if(!preg_match('#^(AS|WS1|WS2|CL[0-9]{1,5})$#',$id))
+            return array('resultState'=>false,'resultText'=>'Invalid id of owner.');
+            
         //We take the key  
-        $p = $this->db->prepare("SELECT * FROM asymkey WHERE id = :id AND validity = 1");
-		$p->execute(array('id'=>$id));
+        $p = $this->db->prepare("SELECT * FROM asymkey WHERE id = :id AND owner = :owner AND validity = '1' LIMIT 1");
+		$p->execute(array('id'=>$keyId,'owner'=>$id));
 		$res = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();
         
@@ -169,8 +189,8 @@ class Key extends General
             return array('resultState'=>false,'resultText'=>'This key is not into the db or it is already revoked.');
             
         //We revoke the key
-        $p = $this->db->prepare("UPDATE key SET validity=:validity WHERE id = :id LIMIT 1");
-		$p->execute(array('validity'=>2,'id'=>$id));
+        $p = $this->db->prepare("UPDATE asymkey SET validity = '0' WHERE id = :id AND owner = :owner AND validity = '1' LIMIT 1");
+		$p->execute(array('id'=>$keyId,'owner'=>$id));
 		$p->closeCursor();
         
         //Done.
@@ -179,16 +199,20 @@ class Key extends General
     
     /**
      * Revocation of a specified symmetric key into the db (but we have to send the information to the concerned WS or client too!)
-     * @param $id the key id to revoke
+     * @param $id the id of the owner
+     * @param $keyId the key id to revoke
      */
-    public function revocationSymmetricKey($id)
+    public function revocationSymmetricKey($id, $keyId)
     {
-        if(!is_int($id) || $id < 0)
+        if(!is_int($keyId) || $keyId < 0)
             return array('resultState'=>false,'resultText'=>'Invalid symetric key id.');
         
+        if(!preg_match('#^(AS|WS1|WS2|CL[0-9]{1,5})$#',$id))
+            return array('resultState'=>false,'resultText'=>'Invalid id of owner.');
+        
         //We take the key  
-        $p = $this->db->prepare("SELECT * FROM sessionkey WHERE id = :id AND validity = 1");
-		$p->execute(array('id'=>$id));
+        $p = $this->db->prepare("SELECT * FROM sessionkey WHERE id = :id AND (horigin = :hid OR hdestination = :hid) AND validity = 1");
+		$p->execute(array('hid'=>Crypt::hashedId($id),'id'=>$keyId));
 		$res = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();
         
@@ -196,8 +220,8 @@ class Key extends General
             return array('resultState'=>false,'resultText'=>'This key is not into the db or it is already revoked.');
             
         //We revoke the key
-        $p = $this->db->prepare("UPDATE sessionkey SET validity=:validity WHERE id = :id LIMIT 1");
-		$p->execute(array('validity'=>2,'id'=>$id));
+        $p = $this->db->prepare("UPDATE sessionkey SET validity=:validity WHERE id = :id AND (horigin = :hid OR hdestination = :hid) LIMIT 1");
+		$p->execute(array('validity'=>0,'hid'=>Crypt::hashedId($id),'id'=>$keyId));
 		$p->closeCursor();
         
         //Done.

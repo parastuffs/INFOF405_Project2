@@ -25,24 +25,24 @@ else
     echo '  <th>Access to WS1</th>';
     echo '  <th>Access to WS2</th>';
     echo '  <th>Current keys</th>';
-    echo '<tr/>';
+    echo '</tr>';
     
     foreach($list['user'] as $key => $value)
     {
         $accessWS1 = 'yes';
+        $accessWS2 = 'yes';
         if($list['user'][$key]['WS1'] === false)
             $accessWS1 = 'no';
         if($list['user'][$key]['WS2'] === false)
             $accessWS2 = 'no';
-        $accessWS2 = 'yes';
         
         echo '<tr>';
         echo '  <td>'.htmlspecialchars($key).'</td>';
         echo '  <td>'.htmlspecialchars($list['user'][$key]['username']).'</td>';
         echo '  <td>'.$accessWS1.'</td>';
         echo '  <td>'.$accessWS2.'</td>';
-        echo '  <td><a href="?page=manageUserKeys&id='.htmlspecialchars($key).'">Manage user keys</a></td>';
-        echo '<tr/>';
+        echo '  <td><a href="?page=manageUserKeys&id=CL'.htmlspecialchars($key).'">Manage user keys</a></td>';
+        echo '</tr>';
     }
     
     echo '<table>';

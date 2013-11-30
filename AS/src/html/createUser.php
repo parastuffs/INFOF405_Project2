@@ -13,8 +13,8 @@ if(isset($_POST['name']) && isset($_POST['accessWS1']) && isset($_POST['accessWS
     {    
         echo '<span bgcolor="green">'.htmlspecialchars($newUser['resultText']).'</span><br/>';
         
-        //We create the RSA keys (they're automatically created in this method)
-        $keys = $Key->getAsymKeysIn('CL'.$newUser['id']);
+        //We create the RSA keys
+        $keys = $Key->getNewAsymKey('CL'.$newUser['id']);
         
         //We display them
         echo 'Keys to give to this client<br/>';

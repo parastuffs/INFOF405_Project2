@@ -138,6 +138,17 @@ class Crypt extends General
     {        
         return sha1('à)àçF45àè§è!'.$username.'èfez9"Eecv$558');
     }
+    
+    
+    /**
+     * Give back the hashed id 
+     * @param $id
+     * @return String
+     */
+    public static function hashedId($id)
+    {        
+        return sha1('àEFZEF§è!'.$id.'èfezrthtrcv$558');
+    }
 }
 
 ?>

@@ -11,8 +11,7 @@ class Access extends General
     {
         if($page < 0 || $page > 10000 || !preg_match('#^[0-9]{1,4}$#',$page))
             return array('resultState'=>false,'resultText'=>'Invalid number of page...','user'=>array(),'nbrPages'=>0);
-        else
-            echo 'OK : '.$page.'<br/>';
+        
         $start = $page*25;
         $end = ($page+1)*25-1;
         
