@@ -28,9 +28,9 @@ class Ini extends General
                 $keys = $GLOBALS['Key']->getNewAsymKey($value);
                 
                 //We display them
-                echo '<strong>Keys for '.$value.'</strong><br/>';
-                echo '<strong>Public key:</strong>'.$keys['publicKey'].'<br/>';
-                echo '<strong>Private key:</strong>'.$keys['privateKey'].'<br/>';
+                echo '<strong>Keys & certificate for '.$value.'</strong><br/>';
+                echo '<strong>Key:</strong> <a href="'.$keys['link'].'" target="__blank">click here</a><br/>';
+                echo '<strong>Certificate:</strong> <a href="'.$keys['linkCertificate'].'" target="__blank">click here</a><br/>';
                 echo '<hr/>';
             }
         }

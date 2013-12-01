@@ -139,6 +139,26 @@ class Crypt extends General
         return sha1('à)àçF45àè§è!'.$username.'èfez9"Eecv$558');
     }
     
+    /**
+     * Give back the token for a key file
+     * @param $id the id of the key
+     * @param $certificate true if certificate, false otherwise
+     * @return String
+     */
+    public static function tokenKeyFile($id, $certificate)
+    {        
+        return sha1('à)àzeE'.$certificate.'FZEFASALPLfàè§è!'.$id.'è519ezr$558');
+    }
+    
+    /**
+     * Give back the password for a key file
+     * @param $id the id of the key
+     * @return String
+     */
+    public static function passwordKeyFile($id)
+    {        
+        return sha1('àad4z9a59zda9az§è!'.$id.'è519ez&é"(§è58');
+    }
     
     /**
      * Give back the hashed id 

@@ -24,10 +24,10 @@ if(!isset($_GET['page']))
 //We check which page we have to display
 $page = $_GET['page'];
 if(!preg_match('#^[a-zA-Z0-9_]{1,25}$#', $page))
-    exit('Wrong page...');
+    exit('Wrong page ()...');
 
 if(!file_exists('src/html/'.$page.'.php'))
-    exit('Wrong page...');
+    exit('Wrong page (2)...');
 
 //We check if the user has the rights to access to this page
 $vf = $Access->verificationIsAdmin();

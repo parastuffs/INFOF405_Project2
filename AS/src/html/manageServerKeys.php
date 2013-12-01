@@ -8,27 +8,26 @@ if(isset($_GET['revokeSym']) && isset($_GET['id']))
 {
     $res = $Key->revocationSymmetricKey($id, $_GET['revokeSym']);
     if($res['resultState'] === true)
-        echo '<span bgcolor=green>'.$res['resultText'].'</span>';
+        echo '<font color="green">'.$res['resultText'].'</font>';
     else
-        echo '<span bgcolor=red>'.$res['resultText'].'</span>';
+        echo '<font color="red">'.$res['resultText'].'</font>';
 }
 else if(isset($_GET['revokeAsym']) && isset($_GET['id']))
 {   
     $res = $Key->revocationAsymmetricKey($id, $_GET['revokeAsym']);
     if($res['resultState'] === true)
     {
-        echo '<span bgcolor=green>'.$res['resultText'].'</span>';
+        echo '<font color="green">'.$res['resultText'].'</font><br/>';
         //We create new asymetric keys
         $keys = $Key->getNewAsymKey($id);
         
-        //We display them
-        echo '<br/><br/>Keys to give to the clients/server<br/>';
-        echo '<strong>Public key:</strong> '.$keys['publicKey'].'<br/>';
-        echo '<strong>Private key:</strong> '.$keys['privateKey'].'<br/><br/>';        
+        //We just say that they're available below
+        echo 'You can download the new keys below.<br/>';
+        
     }
     else
     {
-        echo '<span bgcolor=red>'.$res['resultText'].'</span>';      
+        echo '<font color="red">'.$res['resultText'].'</font>';      
     }
 }
 
@@ -54,7 +53,7 @@ foreach($list as $in => $server)
         foreach($symKeys['keys'] as $key => $value)
         {
             $validity = 'Active';
-            $revoke = '<a href="?page=manageUserKeys&amp;id='.htmlspecialchars($id).'&amp;revokeSym='.htmlspecialchars($key).'">Revoke the key</a>';
+            $revoke = '<a href="?page=manageServerKeys&amp;id='.htmlspecialchars($id).'&amp;revokeSym='.htmlspecialchars($key).'">Revoke the key</a>';
             if($symKeys['keys'][$key]['validity'] != 1)
             {
                 $validity = 'Disactived';
@@ -81,13 +80,10 @@ foreach($list as $in => $server)
     //We take the public key of the user (the private key is never stored in the db)
     $asymKey = $Key->getAsymKeysIn($id);
     echo '<strong>Public key:</strong> ';
-    echo $asymKey['publicKey'];
+    echo '<a href="'.$asymKey['link'].'" target="__blank">Click here to download it</a><br/>'; 
+    echo '<strong>Certificate:</strong> ';
+    echo '<a href="'.$asymKey['linkCertificate'].'" target="__blank">Click here to download it</a><br/>';
     
-    if(!empty($asymKey['privateKey']))
-         echo '<br/><strong>Private key:</strong>'.$asymKey['privateKey'].'<br/>';
-    else
-        echo '<br/><strong>Private key:</strong>: The private key for WS1 & WS2 is never stored in the database. You must generate a new one if the client lost it.<br/>';
-    
-    echo '<a href="?page=manageUserKeys&amp;id='.htmlspecialchars($id).'&amp;revokeAsym='.htmlspecialchars($asymKey['id']).'">Revoke asymmetric key and generate a new one.</a><br/><br/>';
+    echo '<a href="?page=manageServerKeys&amp;id='.htmlspecialchars($id).'&amp;revokeAsym='.htmlspecialchars($asymKey['id']).'">Revoke asymmetric key and generate a new one.</a><br/><br/>';
 }
 ?>

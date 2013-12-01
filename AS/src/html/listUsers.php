@@ -10,7 +10,7 @@ $list = $Access->listAccessControl($npage);
 
 if($list['resultState'] === false)
 {
-    echo '<span bgcolor=red>'.$list['resultText'].'</span><br/>';
+    echo '<font color="red">'.$list['resultText'].'</font><br/>';
 }
 else if(count($list['user']) == 0)
 {

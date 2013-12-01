@@ -10,7 +10,7 @@ class Key extends General
     
     /**
      * Creation of a public and private keys
-     * @return array('resultState'=>bool,'resultText'=>String,'publicKey'=>String,'privateKey'=>String)
+     * @return array('resultState'=>bool,'resultText'=>String,'publicKey'=>String,'privateKey'=>String,'certificateSign'=>String,'certificate'=>String)
      */
     public function create()
     {
@@ -33,14 +33,33 @@ class Key extends General
         $publicKey = openssl_pkey_get_details($keys);
         $publicKey = $publicKey['key'];
         
+        //We create the certificate        
+        $information = array(
+            "countryName" => "BE",
+            "stateOrProvinceName" => "Brussels",
+            "localityName" => "Brussels",
+            "organizationName" => "U.L.B.",
+            "organizationalUnitName" => "U.L.B. IR team",
+            "commonName" => "Delhaye, Degols, Streltsov",
+            "emailAddress" => "gdegols@ulb.ac.be.com"
+        );
+        
+        //Generate a certificate signing request
+        $certificateSign = openssl_csr_new($information, $privateKey);
+        
+        //Generate a self-signed certificate valid during 365 days.
+        $certificate = openssl_csr_sign($certificateSign, null, $privateKey, 365);
+        openssl_csr_export($certificateSign, $csrout);
+        openssl_x509_export($certificate, $certout);
+        
         //Done.
-        return array('resultState'=>true,'resultText'=>'Keys successfully created!','publicKey'=>$publicKey,'privateKey'=>$privateKey);
+        return array('resultState'=>true,'resultText'=>'Keys successfully created!','publicKey'=>$publicKey,'privateKey'=>$privateKey,'certificateSign'=>$csrout,'certificate'=>$certout);
     }
     
     /**
      * Return the asymetric key that the other WS or client have to use to access to a server.
      * @param $owner the server for which the keys are created. If 'AS' the private key is also saved. If "CL".$id it is a client
-     * @return array('publicKey'=>String,'privateKey'=>String,'id'=>int);
+     * @return array('publicKey'=>String,'privateKey'=>String,'id'=>int,'link'=>String,'linkCertificate'=>String);
      */
     public function getAsymKeysIn($owner)
     {        
@@ -48,22 +67,28 @@ class Key extends General
 		$p->execute(array('ws'=>$owner, 'valid'=>1));
 		$vf = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();	
-        
+                
         if(isset($vf['id']))
         {
+            //We create the link
+            $token = Crypt::tokenKeyFile($vf['id'], false);     
+            $link = '?page=download&amp;idKey='.$vf['id'].'&amp;token='.$token.'&amp;name='.$owner.'&amp;certificate=0';   
+            $token = Crypt::tokenKeyFile($vf['id'], true);              
+            $linkCertificate = '?page=download&amp;idKey='.$vf['id'].'&amp;token='.$token.'&amp;name='.$owner.'&amp;certificate=1';        
+            
             $privateKey = '';
             if(!empty($vf['privateKey']))
                 $privateKey = Crypt::decrypt($vf['privateKey'], Crypt::passwordPrivateKey($vf['salt']));
-            return array('publicKey'=>Crypt::decrypt($vf['publicKey'], Crypt::passwordPublicKey($vf['salt'])),'privateKey'=>$privateKey,'id'=>$vf['id']);
+            return array('publicKey'=>Crypt::decrypt($vf['publicKey'], Crypt::passwordPublicKey($vf['salt'])),'privateKey'=>$privateKey,'id'=>$vf['id'],'link'=>$link,'linkCertificate'=>$linkCertificate);
         }
         else
-            return array('publicKey'=>'','privateKey'=>'','id'=>'');
+            return array('publicKey'=>'','privateKey'=>'','id'=>'','link'=>'','linkCertificate'=>'');
     }   
     
     /**
      * Return a new asymetric key to be used to communicate. If it's a client, change the below 'ID_CLIENT' by their id.
      * @param $owner the origin (one from these: 'WS1', 'WS2', 'AS', 'CL'.$ID_CLIENT)
-     * @return array('key'=>String,'validityTime'=>int);
+     * @return array('publicKey'=>String,'privateKey'=>String,'id'=>int,'link'=>String,'linkCertificate'=>String);
      */
     public function getNewAsymKey($owner)
     {
@@ -78,19 +103,27 @@ class Key extends General
         else
             $cryptedPrivateKey = '';
         
+        
         //We insert them into the db
         $p = $this->db->prepare("INSERT INTO asymkey VALUES (NULL, :owner, :publicKey, :privateKey, :creationDate, :salt, :validity)");
 		$p->execute(array('owner'=>$owner,'publicKey'=>$cryptedPublicKey,'privateKey'=>$cryptedPrivateKey,'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
 		$p->closeCursor();	
         
         //We take the id
-        $p = $this->db->prepare("SELECT * FROM asymkey WHERE owner = :ws AND validity=:valid AND privateKey = '' ORDER BY creationDate DESC LIMIT 1");
+        $p = $this->db->prepare("SELECT * FROM asymkey WHERE owner = :ws AND validity=:valid ORDER BY creationDate DESC LIMIT 1");
 		$p->execute(array('ws'=>$owner, 'valid'=>1));
 		$vf = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();	
         
+        //We create the file and the link to it.
+        Download::createAsymKeyFile($vf['id'], $keys['privateKey'], $keys['publicKey'], $keys['certificate'], $owner == 'AS');
+        $token = Crypt::tokenKeyFile($vf['id'], false);     
+        $link = '?page=download&amp;idKey='.$vf['id'].'&amp;token='.$token.'&amp;name='.$owner.'&amp;certificate=0';
+        $token = Crypt::tokenKeyFile($vf['id'], true);     
+        $linkCertificate = '?page=download&amp;idKey='.$vf['id'].'&amp;token='.$token.'&amp;name='.$owner.'&amp;certificate=1';        
+        
         //We return the created key and the time it is valid.
-        return array('publicKey'=>$keys['publicKey'],'privateKey'=>$keys['privateKey'],'id'=>$vf['id']);
+        return array('publicKey'=>$keys['publicKey'],'privateKey'=>$keys['privateKey'],'id'=>$vf['id'],'link'=>$link,'linkCertificate'=>$linkCertificate);
     } 
     
     /**
@@ -193,6 +226,9 @@ class Key extends General
 		$p->execute(array('id'=>$keyId,'owner'=>$id));
 		$p->closeCursor();
         
+        //We delete the associated files
+        Download::destroyAsymKeyFile($keyId);
+        
         //Done.
         return array('resultState'=>true,'resultText'=>'Key successfully revoked');
     }
@@ -226,7 +262,7 @@ class Key extends General
         
         //Done.
         return array('resultState'=>true,'resultText'=>'Key successfully revoked');
-    }
+    }    
 }
 
 ?>

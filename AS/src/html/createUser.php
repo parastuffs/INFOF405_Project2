@@ -11,19 +11,20 @@ if(isset($_POST['name']) && isset($_POST['accessWS1']) && isset($_POST['accessWS
     //If the user was successfully created, we create its RSA key and things like that
     if($newUser['resultState'] === true)
     {    
-        echo '<span bgcolor="green">'.htmlspecialchars($newUser['resultText']).'</span><br/>';
+        echo '<font color="green">'.htmlspecialchars($newUser['resultText']).'</font><br/>';
         
         //We create the RSA keys
         $keys = $Key->getNewAsymKey('CL'.$newUser['id']);
         
-        //We display them
-        echo 'Keys to give to this client<br/>';
-        echo '<strong>Public key:</strong> '.$keys['publicKey'].'<br/>';
-        echo '<strong>Private key:</strong> '.$keys['privateKey'].'<br/>';
+        //We display the link to them
+        echo '<strong>Public key:</strong> ';
+        echo '<a href="'.$keys['link'].'" target="__blank">Click here to download it</a><br/>'; 
+        echo '<strong>Certificate:</strong> ';
+        echo '<a href="'.$keys['linkCertificate'].'" target="__blank">Click here to download it</a><br/>';
     }
     else
     {//We just display the error
-        echo '<span bgcolor="red">'.htmlspecialchars($newUser['resultText']).'</span><br/>';
+        echo '<font color="red">'.htmlspecialchars($newUser['resultText']).'</font><br/>';
     }
 }
 
@@ -33,7 +34,7 @@ if(isset($_POST['name']) && isset($_POST['accessWS1']) && isset($_POST['accessWS
 <strong>Complete the following information to create a new user</strong><br/>
 <form action="?page=createUser" method="post">
     <label for="name">
-        <span title="between 1 and 25 characters (a-zA-Z0-9._-)">Username:</span>
+        <span title="between 1 and 25 characters (a-zA-Z0-9._-)">Username:</font>
         <input type="text" id="name" name="name" maxlength="15">
     </label>
     <br/>
