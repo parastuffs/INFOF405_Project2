@@ -23,35 +23,30 @@ public class Blackboard extends WebService {
 		if(request!=SHOW || request!=WRITE)
 			System.out.println("Blackboard: invalid request");
 		else {
-			ArrayList<String> message = new ArrayList<String>();
 			if(request==SHOW) {
-				//collect all posts from the DB
-				//TODO TESTING:
-				message.add("Coucou");
-				message.add("Deuxieme :D");
-				message.add("Je sais pas quoi ecrire ici.");
+				//collect all posts of the client from the DB
+				ArrayList<String> message = BlackboardDB.getInstance().getMyPosts(clientID);
+				try {
+					//encrypt the result with the AES key
+					SealedObject encryptedMsg = new SealedObject(message,
+							this.getCipherOfSharedKey(super.getClientKey(clientID), ENCRYPT));
+					//send it to client
+					out.writeObject(encryptedMsg);
+				} catch (IllegalBlockSizeException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			} else if(request==WRITE) {
-				//TODO 
-				message.add("wriiiiiiiiiiiiite");
-			}
-			try {
-				//encrypt the result with the AES key
-				SealedObject encryptedMsg = new SealedObject(message,
-						this.getCipherOfSharedKey(super.getClientKey(clientID), ENCRYPT));
-				//send it to client
-				out.writeObject(encryptedMsg);
-			} catch (IllegalBlockSizeException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				BlackboardDB.getInstance().writeOnBoard(clientID, "Rainbow poney");//TESTING PURPOSE
 			}
 		}
 	}
 	
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
 		new Blackboard();
+		BlackboardDB.getInstance().closeConnection();
 	}
 }
