@@ -1,3 +1,4 @@
+package client;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -209,7 +210,13 @@ public class Client {
 	}
 	
 	private void printBlackBoard() {
-		
+		try {
+			requestAccessBlackBoard();
+		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
+				| IllegalBlockSizeException | ClassNotFoundException
+				| IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private void writeBlackBoard() {
