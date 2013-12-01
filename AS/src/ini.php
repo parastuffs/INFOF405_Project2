@@ -18,6 +18,7 @@ if(!file_exists('.htaccess'))
         </p>
         </form>';
 
+                
         exit();        
     }
     else
@@ -38,6 +39,16 @@ if(!file_exists('.htaccess'))
         //We create the htpassword
         $fic = fopen('.htpasswd','w');
         fputs($fic, $_POST['name'].':'.crypt($_POST['pass']));
+        fclose($fic);
+        
+        //We generate a new special salt for the website, to avoid the "sécurité par l'aveugle"
+        $t = file_get_contents('src/php/Crypt.class.php');
+        $crypto = true;
+        $bytes = openssl_random_pseudo_bytes(25, $crypto);        
+        $pass = sha1(bin2hex($bytes));
+        $t = preg_replace('#(const SPECIFIC_SALT) \\= "([a-zA-Z0-9]{40})";#','$1 = "'.$pass.'";',$t);
+        $fic = fopen('src/php/Crypt.class.php','w');
+        fputs($fic, $t);
         fclose($fic);
         
         //redirection

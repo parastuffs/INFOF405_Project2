@@ -5,6 +5,9 @@ class Crypt extends General
     const ALGO = 'rijndael-128';
     const MODE = 'cfb';
     
+    //Specific salt which is load at the creation of the website to avoid the "sécurité par l'aveugle". DO NOT change the following line manually without checking src/ini.php!
+    const SPECIFIC_SALT = "1bfbdf35b1359fc6b6f93893874cf23a50293de5";
+    
     /**
      * Allows to crypt the information with a given password 
      * @param $text the text to encrypt
@@ -68,7 +71,7 @@ class Crypt extends General
      */
     public static function passwordWS($WS, $salt)
     {        
-        return '564zecv4'.$WS.'zFEFEZf4fl'.$salt.'p^dz^l^p)àç'.$WS.'!à!èç';
+        return sha1('564zecv4'.$WS.'zFEFEZ'.self::SPECIFIC_SALT.'f4fl'.$salt.'p^dz^l^p)àç'.$WS.'!à!èç');
     }
     
     /**
@@ -78,7 +81,7 @@ class Crypt extends General
      */
     public static function passwordPublicKey($salt)
     {        
-        return '^à)çà!çèç)§FEFEZµù'.$salt.'$55878zefFE';
+        return sha1('^à)çà!çèç)'.self::SPECIFIC_SALT.'§FEFEZµù'.$salt.'$55878zefFE');
     }
         
     /**
@@ -88,7 +91,7 @@ class Crypt extends General
      */
     public static function passwordPrivateKey($salt)
     {        
-        return '^àù$$^'.$salt.'ù$ùù$$ùù$czq$ù$ùcqsd$ùq$ùdqscv'.$salt.'$558';
+        return sha1('^àù$$^'.$salt.'ù$ùù$$ùù$czq$ù$ùcqsd$ùq'.self::SPECIFIC_SALT.'$ùdqscv'.$salt.'$558');
     }
     
     /**
@@ -98,7 +101,7 @@ class Crypt extends General
      */
     public static function passwordSessionKey($salt)
     {        
-        return '^àù$$^'.$salt.'ù56zef169ez1f56eç!è!çà)$^ùµfezfezfezgecv'.$salt.'$558';
+        return sha1('^àù$$^'.$salt.'ù56zef169ez1f56eç!è!ç'.self::SPECIFIC_SALT.'à)$^ùµfezfezfezgecv'.$salt.'$558');
     }
     
     /**
@@ -107,7 +110,7 @@ class Crypt extends General
      */
     public static function passwordKeyOrigin()
     {        
-        return 'à)àç)&é)éàzgecv$558';
+        return sha1('à)àç)&é)éàz'.self::SPECIFIC_SALT.'gecv$558');
     }
     
     /**
@@ -116,7 +119,7 @@ class Crypt extends General
      */
     public static function passwordKeyDestination()
     {        
-        return 'à)àçF4fez9"Eecv$558';
+        return sha1('à)àçF4fez9"E'.self::SPECIFIC_SALT.'ecv$558');
     }
     
     /**
@@ -126,7 +129,7 @@ class Crypt extends General
      */
     public static function passwordUsername($salt)
     {        
-        return 'à45fzaezefzfe0979'.$salt.'8IKpml$558';
+        return sha1('à45fzae'.self::SPECIFIC_SALT.'zefzfe0979'.$salt.'8IKpml$558');
     }
     
     /**
@@ -136,7 +139,7 @@ class Crypt extends General
      */
     public static function hashedUsername($username)
     {        
-        return sha1('à)àçF45àè§è!'.$username.'èfez9"Eecv$558');
+        return sha1('à)àçF45àè§è!'.$username.'èfez9"Eec'.self::SPECIFIC_SALT.'v$558');
     }
     
     /**
@@ -147,7 +150,7 @@ class Crypt extends General
      */
     public static function tokenKeyFile($id, $certificate)
     {        
-        return sha1('à)àzeE'.$certificate.'FZEFASALPLfàè§è!'.$id.'è519ezr$558');
+        return sha1('à)àzeE'.$certificate.'FZEFASA'.self::SPECIFIC_SALT.'LPLfàè§è!'.$id.'è519ezr$558');
     }
     
     /**
@@ -157,7 +160,7 @@ class Crypt extends General
      */
     public static function passwordKeyFile($id)
     {        
-        return sha1('àad4z9a59zda9az§è!'.$id.'è519ez&é"(§è58');
+        return sha1('àad4z9a5'.self::SPECIFIC_SALT.'9zda9az§è!'.$id.'è519ez&é"(§è58');
     }
     
     /**
@@ -167,7 +170,7 @@ class Crypt extends General
      */
     public static function hashedId($id)
     {        
-        return sha1('àEFZEF§è!'.$id.'èfezrthtrcv$558');
+        return sha1('àEFZEF§è!'.$id.'èfezrthtr'.self::SPECIFIC_SALT.'cv$558');
     }
 }
 
