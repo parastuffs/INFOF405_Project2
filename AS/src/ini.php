@@ -24,10 +24,18 @@ if(!file_exists('.htaccess'))
     {
         //We create the htaccess
         $path = realpath('index.php');
-        $ori = $path;
-        $path = explode('\\',$path);
-        array_pop($path);
-        $path = implode('\\',$path);
+        $inf = explode('/',$path);
+        if(isset($inf[1]))
+        {//linux
+            array_pop($inf);     
+            $path = implode('/',$inf);
+        }
+        else
+        {//windows
+            $path = explode('\\',$path);   
+            array_pop($path);     
+            $path = implode('\\',$path);
+        }
         $fic = fopen('.htaccess','w');
         fputs($fic, 'AuthName "Administration: see readme.txt"
                     AuthType Basic
