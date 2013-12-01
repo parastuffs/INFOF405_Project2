@@ -39,9 +39,15 @@ if($vf['resultState'] === false)
     exit($vf['resultText']);
     
 //We display it
-include('src/html/include/head.html');
-include('src/html/include/listing.html');
-include('src/html/'.$page.'.php');
-include('src/html/include/bottom.html');
-    
+if($page == 'download')
+{
+    include('src/html/'.$page.'.php');
+}
+else
+{
+    include('src/html/include/head.html');
+    include('src/html/include/listing.html');
+    include('src/html/'.$page.'.php');
+    include('src/html/include/bottom.html');
+}   
 ?>
