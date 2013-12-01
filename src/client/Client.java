@@ -18,6 +18,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.ListIterator;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -38,6 +39,7 @@ public class Client {
 	private Socket sockWS1;
 	private final int PORT_AS = 42000;
 	private final int PORT_WS1 = 2013;
+	private final int WS1_PRINT = 0;
 	private byte[] r1;
 	private byte[] r3;
 	private byte[] r4;
@@ -91,7 +93,7 @@ public class Client {
 	 * @throws ClassNotFoundException
 	 */
 	@SuppressWarnings("unchecked")
-	public void requestAccessBlackBoard() throws UnknownHostException, IOException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, ClassNotFoundException {
+	public boolean requestAccessBlackBoard() throws UnknownHostException, IOException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, ClassNotFoundException {
 		this.sockAS = new Socket("localhost", PORT_AS);//Connection to AS
 		
 		//
@@ -157,18 +159,19 @@ public class Client {
         	if(r3Challenge == this.r3) {
         		closeConnectionAS();
         		//OK; open communication with WS1.
+        		return true;
         	}
         	else {
         		//Challenge from AS not accepted.
         		closeConnectionAS();
+        		return false;
         	}
         	
         }
         else {
         	closeConnectionAS();
+        	return false;
         }
-		
-		System.out.println("Vers l'infini et au-dela !");
 		
 	}
 	
@@ -210,13 +213,61 @@ public class Client {
 	}
 	
 	private void printBlackBoard() {
+		
+		
 		try {
-			requestAccessBlackBoard();
+
+			if(requestAccessBlackBoard()) {
+			
+				this.sockWS1 = new Socket("localhost", PORT_WS1);
+				ArrayList<Object> request = new ArrayList<Object>();
+				
+				//
+				//AES construction
+				//
+				String key = "Ivenoideawhatodo";
+				byte[] raw = key.getBytes();
+				SecretKeySpec sks = new SecretKeySpec(raw, "AES");
+				Cipher ciph = Cipher.getInstance("AES/CBC/PKCS5Padding");
+				ciph.init(Cipher.ENCRYPT_MODE, sks, new IvParameterSpec(new byte[16]));
+	
+				SealedObject encryptedRequestType = new SealedObject(WS1_PRINT, ciph);			
+				
+				//Adds the elements to the list
+				request.add(CLIENT_ID);
+				request.add(encryptedRequestType);
+
+				//Sends the object
+				ObjectOutputStream outWS = new ObjectOutputStream(sockWS1.getOutputStream());
+				outWS.writeObject(request);
+				outWS.flush();
+				
+				//Receives the messages
+				ObjectInputStream ois = new ObjectInputStream(this.sockAS.getInputStream());
+		        ArrayList<String> blackBoardMes = new ArrayList<String>();
+		        blackBoardMes = (ArrayList<String>)ois.readObject();
+				
+				this.sockWS1.close();
+				
+				
+				ListIterator<String> li = blackBoardMes.listIterator();
+				System.out.println("Your blackboard:\n------------");
+				while(li.hasNext()) {
+					System.out.println(li.next()+"------------");
+				}
+				
+				
+			}
+			else {
+				//Connection refused.
+			}
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
 				| IllegalBlockSizeException | ClassNotFoundException
-				| IOException e) {
+				| IOException | InvalidAlgorithmParameterException e) {
 			e.printStackTrace();
 		}
+		
+		
 	}
 	
 	private void writeBlackBoard() {
