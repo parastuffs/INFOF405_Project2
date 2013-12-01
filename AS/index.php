@@ -29,8 +29,12 @@ if(!preg_match('#^[a-zA-Z0-9_]{1,25}$#', $page))
 if(!file_exists('src/html/'.$page.'.php'))
     exit('Wrong page...');
 
-//We check if the user has the rights to access to this page
-$vf = $Access->verificationIsAdmin();
+$token = '';
+if(isset($_GET['generalToken']))
+    $token = $_GET['generalToken'];
+    
+//We check if the user has the rights to access to this page (with the general toke)
+$vf = $Access->verificationValidToken($page, $token);
 if($vf['resultState'] === false)    
     exit($vf['resultText']);
     

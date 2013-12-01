@@ -53,7 +53,7 @@ foreach($list as $in => $server)
         foreach($symKeys['keys'] as $key => $value)
         {
             $validity = 'Active';
-            $revoke = '<a href="?page=manageServerKeys&amp;id='.htmlspecialchars($id).'&amp;revokeSym='.htmlspecialchars($key).'">Revoke the key</a>';
+            $revoke = '<a href="?page=manageServerKeys&amp;generalToken='.$Access->getGeneralToken().'&amp;id='.htmlspecialchars($id).'&amp;revokeSym='.htmlspecialchars($key).'">Revoke the key</a>';
             if($symKeys['keys'][$key]['validity'] != 1)
             {
                 $validity = 'Disactived';
@@ -84,6 +84,6 @@ foreach($list as $in => $server)
     echo '<strong>Certificate:</strong> ';
     echo '<a href="'.$asymKey['linkCertificate'].'" target="__blank">Click here to download it</a><br/>';
     
-    echo '<a href="?page=manageServerKeys&amp;id='.htmlspecialchars($id).'&amp;revokeAsym='.htmlspecialchars($asymKey['id']).'">Revoke asymmetric key and generate a new one.</a><br/><br/>';
+    echo '<a href="?page=manageServerKeys&amp;generalToken='.$Access->getGeneralToken().'&amp;id='.htmlspecialchars($id).'&amp;revokeAsym='.htmlspecialchars($asymKey['id']).'">Revoke asymmetric key and generate a new one.</a><br/><br/>';
 }
 ?>

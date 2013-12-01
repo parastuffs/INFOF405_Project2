@@ -6,7 +6,7 @@ class Crypt extends General
     const MODE = 'cfb';
     
     //Specific salt which is load at the creation of the website to avoid the "sécurité par l'aveugle". DO NOT change the following line manually without checking src/ini.php!
-    const SPECIFIC_SALT = "1bfbdf35b1359fc6b6f93893874cf23a50293de5";
+    const SPECIFIC_SALT = "54449e23551a92e1ce64b957848bab2e8efcb00a";
     
     /**
      * Allows to crypt the information with a given password 
@@ -171,6 +171,16 @@ class Crypt extends General
     public static function hashedId($id)
     {        
         return sha1('àEFZEF§è!'.$id.'èfezrthtr'.self::SPECIFIC_SALT.'cv$558');
+    }
+    
+    /**
+     * Give back the general hashed token for the url
+     * @param $token
+     * @return String
+     */
+    public static function tokenGeneralUrl($token)
+    {        
+        return sha1('àzFE§è!'.$token.'èf§!è§§è!çr'.self::SPECIFIC_SALT.'cv$558');
     }
 }
 

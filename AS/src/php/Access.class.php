@@ -1,7 +1,9 @@
 <?php 
 
 class Access extends General
-{        
+{       
+    private $generalToken='';
+    
     /**
      * Listing the access control list / users with their access 
      * @param $page int
@@ -85,12 +87,47 @@ class Access extends General
     }
     
     /**
-     * Verification if the current person has the right to access to this page
+     * Verification if the general token of page is ok (there is no general token for the download page)
+     * @param $page
+     * @param $token
      * @return array('resultState'=>bool,'resultText'=>String)
      */
-    public function verificationIsAdmin()
+    public function verificationValidToken($page, $token)
     {
-        ;//TODO
+        //Why can't we just make a token based on a hour and a self::SPECIFIC_SALT? -> Because, if the admin goes to a page on another website
+        //the internet browser sends sometimes the url where it comes from. So the website can take it and directly use it. The most secure 
+        //way is to generate a new specific token for each page.
+        
+        //If we are at the index page there is no need of a token (and the admin will never has it anyway when he just logs in), same thing for the download (as it would need to have several tokens activated simultaneously). But there is no problem with that.
+        if($page == 'download' || $page == 'index')
+            return array('resultState'=>true,'resultText'=>'');
+        
+        //We take the token that should be used
+        if(!file_exists('src/files/security.token'))
+            return array('resultState'=>false,'resultText'=>'Please, go first to the main page of the website which is <a href="?page=index">index.php</a>. It is not to annoy you, it is a security measure.');
+        
+        if(Crypt::tokenGeneralUrl(file_get_contents('src/files/security.token')) == $token)
+            return array('resultState'=>true,'resultText'=>'');
+        else
+            return array('resultState'=>false,'resultText'=>'Sorry this page will not be displayed. Why? Security measure. Cf. report.<br/>You cannot open two pages at the same time.');
+    }
+    
+    /**
+     * Create a new token and directly, but if there is already one created before, we give the same back
+     * @return String
+     */
+    public function getGeneralToken()
+    {
+        if(empty($this->generalToken))
+        {
+            $this->generalToken = $this->createSalt();
+            
+            $fic = fopen('src/files/security.token','w');
+            fputs($fic,$this->generalToken);
+            fclose($fic);
+        }
+        
+        return Crypt::tokenGeneralUrl($this->generalToken);
     }
 }
 

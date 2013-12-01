@@ -41,7 +41,7 @@ else
         echo '  <td>'.htmlspecialchars($list['user'][$key]['username']).'</td>';
         echo '  <td>'.$accessWS1.'</td>';
         echo '  <td>'.$accessWS2.'</td>';
-        echo '  <td><a href="?page=manageUserKeys&id=CL'.htmlspecialchars($key).'">Manage user keys</a></td>';
+        echo '  <td><a href="?page=manageUserKeys&amp;generalToken='.$Access->getGeneralToken().'&amp;id=CL'.htmlspecialchars($key).'">Manage user keys</a></td>';
         echo '</tr>';
     }
     
@@ -51,7 +51,7 @@ else
     {
         echo '<br/><br/>List of pages<br/>';
         for($i=0; $i <= $list['nbrPages']; $i++)
-            echo '<a href="?page=listUsers&npage='.$i.'">page '.($i+1).'</a><br/>';
+            echo '<a href="?page=listUsers&amp;generalToken='.$Access->getGeneralToken().'&amp;npage='.$i.'">page '.($i+1).'</a><br/>';
     }
 }
 ?>

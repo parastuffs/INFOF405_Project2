@@ -32,7 +32,7 @@ if(isset($_POST['name']) && isset($_POST['accessWS1']) && isset($_POST['accessWS
 ?>
 
 <strong>Complete the following information to create a new user</strong><br/>
-<form action="?page=createUser" method="post">
+<form action="?page=createUser&amp;generalToken=<?php echo $Access->getGeneralToken(); ?>" method="post">
     <label for="name">
         <span title="between 1 and 25 characters (a-zA-Z0-9._-)">Username:</font>
         <input type="text" id="name" name="name" maxlength="15">
