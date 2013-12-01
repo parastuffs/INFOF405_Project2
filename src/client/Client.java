@@ -14,12 +14,16 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.ListIterator;
 import java.util.Random;
@@ -34,6 +38,8 @@ import javax.crypto.SealedObject;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.ServerSocketFactory;
+import javax.xml.bind.DatatypeConverter;
+
 
 
 public class Client {
@@ -51,6 +57,8 @@ public class Client {
 	private final int AS_ID = 0;
 	private final int WS1_ID = 1;
 	private final int WS2_ID = 2;
+	private final String PRIVATEKEYFILE = "certs/key.CL1.private.pem";
+	private final String PUBLICKEYFILE = "certs/key.CL1.public.pem";
 	
 	private PrivateKey clientPrivateKey;
 	private PublicKey clientPublicKey;
@@ -60,7 +68,9 @@ public class Client {
 	
 	public Client() {
 
-		
+		this.clientPrivateKey = loadPrivateKey(this.PRIVATEKEYFILE, "RSA");
+		System.out.println("private client: "+this.clientPrivateKey);
+		this.clientPublicKey = loadPublicKey(this.PUBLICKEYFILE, "RSA");
 		//For testing purpose only ####
 		try {
 			generateKeys();
@@ -72,22 +82,59 @@ public class Client {
 	}
 	
 	/**
-	 * Method loading the public and private keys from the .pem files.
-	 * TODO to populate
-	 * @param filename .pem file containing the keys
+	 * Method loading the private keys from the .pem file.
+	 * @param filename .pem file containing the key
 	 */
-	private void loadPrivateKey(String filename) {
+	private PrivateKey loadPrivateKey(String filename, String algo) {
 		File f = new File(filename);
 		FileInputStream fis;
 		try {
 			fis = new FileInputStream(f);
 			DataInputStream dis = new DataInputStream(fis);
-			
-			
-		} catch (FileNotFoundException e) {
+			byte[] keyBytes = new byte[(int) f.length()];
+			dis.readFully(keyBytes);
+			dis.close();
+
+			String temp = new String(keyBytes);
+			String privKeyPEM = temp.replace("-----BEGIN PRIVATE KEY-----\n", "");
+			privKeyPEM = privKeyPEM.replace("-----END PRIVATE KEY-----", "");
+			//System.out.println("Private key\n"+privKeyPEM);
+			byte[] decoded = DatatypeConverter.parseBase64Binary(privKeyPEM);
+			PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
+			KeyFactory kf = KeyFactory.getInstance(algo);
+			return kf.generatePrivate(spec);	
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException e) {
 			e.printStackTrace();
+			return null;
 		}
 		
+	}
+	
+	/**
+	 * Method loading the public key from the .pem file.
+	 * @param filename .pem file containing the key
+	 */
+	private PublicKey loadPublicKey(String filename, String algo) {
+		File f = new File(filename);
+		FileInputStream fis;
+		try {
+			fis = new FileInputStream(f);
+			DataInputStream dis = new DataInputStream(fis);
+			byte[] keyBytes = new byte[(int) f.length()];
+			dis.readFully(keyBytes);
+			dis.close();
+			
+			String temp = new String(keyBytes);
+			String publicKeyPEM = temp.replace("-----BEGIN PUBLIC KEY-----\n", "");
+			publicKeyPEM = publicKeyPEM.replace("-----END PUBLIC KEY-----", "");
+			byte[] decoded = DatatypeConverter.parseBase64Binary(publicKeyPEM);
+			X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
+			KeyFactory kf = KeyFactory.getInstance(algo);
+			return kf.generatePublic(spec);
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 	
 	/**
@@ -288,11 +335,8 @@ public class Client {
 		System.out.println("Alright. Please type hereunder the message to write on your black board:");
 		Scanner sc = new Scanner(System.in);
 		String message = "Lamasticot";
-		while(sc.hasNextLine()) {
-			message += sc.nextLine();
-		}
+		message += sc.nextLine();
 		sc.close();
-		
 		try {
 
 			if(requestAccessBlackBoard()) {
@@ -325,10 +369,10 @@ public class Client {
 				//Receives the messages
 				ObjectInputStream ois = new ObjectInputStream(this.sockAS.getInputStream());
 		        if((boolean)AESDecipher(ois.readObject(), key)) {
-		        	System.out.println("Wrting successful.");
+		        	System.out.println("Writing successful.");
 		        }
 		        else {
-		        	System.out.println("Wrting failed.");
+		        	System.out.println("Writing failed.");
 		        }
 				
 				this.sockWS1.close();
@@ -424,7 +468,6 @@ public class Client {
 		System.out.println("4 - Add a new password");
 		Scanner sc = new Scanner(System.in);
 		int uChoice = sc.nextInt();
-		sc.close();
 		if( uChoice == 1) {
 			c.printBlackBoard();
 		}
@@ -437,6 +480,7 @@ public class Client {
 		else if(uChoice == 4) {
 			c.addPasswd();
 		}
+		sc.close();
 		
 		//Thread t = new Thread(new TestServer());
 		//t.start();
