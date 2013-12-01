@@ -40,6 +40,7 @@ public class Client {
 	private final int PORT_AS = 42000;
 	private final int PORT_WS1 = 2013;
 	private final int WS1_PRINT = 0;
+	private final int WS1_WRITE = 1;
 	private byte[] r1;
 	private byte[] r3;
 	private byte[] r4;
@@ -245,7 +246,7 @@ public class Client {
 				//Receives the messages
 				ObjectInputStream ois = new ObjectInputStream(this.sockAS.getInputStream());
 		        ArrayList<String> blackBoardMes = new ArrayList<String>();
-		        blackBoardMes = (ArrayList<String>)ois.readObject();
+		        blackBoardMes = (ArrayList<String>)AESDecipher(ois.readObject(), key);
 				
 				this.sockWS1.close();
 				
@@ -272,6 +273,61 @@ public class Client {
 	
 	private void writeBlackBoard() {
 		
+		System.out.println("Alright. Please type hereunder the write on your black board:");
+		Scanner sc = new Scanner(System.in);
+		String message = sc.nextLine();
+		sc.close();
+		
+		try {
+
+			if(requestAccessBlackBoard()) {
+			
+				this.sockWS1 = new Socket("localhost", PORT_WS1);
+				ArrayList<Object> request = new ArrayList<Object>();
+				
+				//
+				//AES construction
+				//
+				String key = "Ivenoideawhatodo";
+				byte[] raw = key.getBytes();
+				SecretKeySpec sks = new SecretKeySpec(raw, "AES");
+				Cipher ciph = Cipher.getInstance("AES/CBC/PKCS5Padding");
+				ciph.init(Cipher.ENCRYPT_MODE, sks, new IvParameterSpec(new byte[16]));
+	
+				SealedObject encryptedRequestType = new SealedObject(WS1_WRITE, ciph);	
+				SealedObject encryptedMessage = new SealedObject(message, ciph);
+				
+				//Adds the elements to the list
+				request.add(CLIENT_ID);
+				request.add(encryptedRequestType);
+				request.add(encryptedMessage);
+
+				//Sends the object
+				ObjectOutputStream outWS = new ObjectOutputStream(sockWS1.getOutputStream());
+				outWS.writeObject(request);
+				outWS.flush();
+				
+				//Receives the messages
+				ObjectInputStream ois = new ObjectInputStream(this.sockAS.getInputStream());
+		        if((boolean)AESDecipher(ois.readObject(), key)) {
+		        	System.out.println("Wrting successful.");
+		        }
+		        else {
+		        	System.out.println("Wrting failed.");
+		        }
+				
+				this.sockWS1.close();
+				
+				
+			}
+			else {
+				//Connection refused.
+			}
+		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
+				| IllegalBlockSizeException | ClassNotFoundException
+				| IOException | InvalidAlgorithmParameterException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private void printPasswd() {
@@ -305,6 +361,23 @@ public class Client {
 		}
 	}
 	
+	private Object AESDecipher(Object ciphered, String key) {
+        try {
+        	byte[] raw = key.getBytes();
+            SecretKeySpec sks = new SecretKeySpec(raw, "AES");
+            String algo = ((SealedObject) ciphered).getAlgorithm();//Get the algorithm
+            Cipher ciph = Cipher.getInstance(algo);//Get the cipher
+            ciph.init(Cipher.DECRYPT_MODE, sks, new IvParameterSpec(new byte[16]));//Decrypt
+			return ((SealedObject)ciphered).getObject(ciph);
+		} catch (ClassNotFoundException | IllegalBlockSizeException
+				| BadPaddingException | IOException | InvalidKeyException
+				| InvalidAlgorithmParameterException | NoSuchAlgorithmException
+				| NoSuchPaddingException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
 	/**
 	 * Closes the connection with AS.
 	 */
@@ -329,6 +402,7 @@ public class Client {
 		System.out.println("4 - Add a new password");
 		Scanner sc = new Scanner(System.in);
 		String str = sc.nextLine();
+		sc.close();
 		int uChoice = Integer.parseInt(str);
 		if( uChoice == 1) {
 			c.printBlackBoard();
