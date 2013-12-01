@@ -63,6 +63,45 @@ class User extends General
         return array('resultState'=>true, 'resultText'=>'Member successfully created!','id'=>$vf['id']);
     }
     
+    /**
+     * Delete a client
+     * @param $id 'CL'.$idClient
+     * @return array('resultState'=>bool,'resultText'=>String,'id'=>int)
+     */
+    public function deleteClient($id)
+    {
+        //Verification of the id of the client
+        if(!preg_match('#^CL[0-9]{1,5}$#', $id))
+            return array('resultState'=>false, 'resultText'=>'Invalid user id!');
+        $id = explode('CL',$id);
+        $id = $id[1];
+        
+        //Verification if there is a similar user into the db
+        $p = $this->db->prepare("SELECT * FROM user WHERE id = :id LIMIT 1");
+		$p->execute(array('id'=>$id));
+		$vf = $p->fetch(PDO::FETCH_ASSOC);
+		$p->closeCursor();	                
+        
+        if(!isset($vf['id']))
+            return array('resultState'=>false, 'resultText'=>'This user is not in the db anymore!');
+        
+        //We delete all its information
+        $p = $this->db->prepare("DELETE FROM user WHERE id = :id LIMIT 1");
+		$p->execute(array('id'=>$id));
+		$p->closeCursor();	        
+        
+        $p = $this->db->prepare("DELETE FROM asymkey WHERE owner = :owner LIMIT 1");
+		$p->execute(array('owner'=>'CL'.$id));
+		$p->closeCursor();	        
+        
+        $p = $this->db->prepare("DELETE FROM sessionkey WHERE horigin = :hid LIMIT 1");
+		$p->execute(array('hid'=>Crypt::hashedId('CL'.$id)));
+		$p->closeCursor();	
+        
+        //Done :).
+        return array('resultState'=>true, 'resultText'=>'Client successfully deleted!');
+    }   
+    
 }
 
 ?>

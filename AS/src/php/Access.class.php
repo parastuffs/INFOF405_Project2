@@ -50,17 +50,19 @@ class Access extends General
     /**
      * Change the access to a webservice for a user
      * @param $id int the id of the user
-     * @param $WS1 bool the new access to WS1
-     * @param $WS2 bool the new access to WS2
+     * @param $type int the id of the WS ('WS1' or 'WS2')
+     * @param $newAcces bool the new access to WS.$type
      * @return array('resultState'=>bool,'resultText'=>String)
      */
-    public function changeUserAccess($id, $WS1, $WS2)
+    public function changeUserAccess($id, $type, $newAccess)
     {    
-        if(!is_int($id) || $id < 0)
-            return array('resultState'=>false,'resultText'=>'This user is not into the database.');
+        if(!preg_match('#^CL[0-9]{1,5}$#', $id))
+            return array('resultState'=>false, 'resultText'=>'Invalid user id!');
+        $id = explode('CL',$id);
+        $id = $id[1];
         
         //We take the user & check if he is in the db
-        $p = $this->db->prepare("SELECT id, salt FROM user WHERE id = :id LIMIT 1");
+        $p = $this->db->prepare("SELECT id, salt, WS1, WS2 FROM user WHERE id = :id LIMIT 1");
 		$p->execute(array('id'=>$id));
 		$res = $p->fetch(PDO::FETCH_ASSOC);
 		$p->closeCursor();
@@ -68,12 +70,21 @@ class Access extends General
             return array('resultState'=>false,'resultText'=>'This user is not into the database.');
                 
         //We change his information
-        $WS1=0;
-        $WS2=0;
-        if($access['WS1'] === true)
-            $WS1 = 1;
-        if($access['WS2'] === true)
-            $WS2 = 1;
+        $WS1 = Crypt::decrypt($res['WS1'],Crypt::passwordWS(1,$res['salt']));
+        $WS2 = Crypt::decrypt($res['WS2'],Crypt::passwordWS(2,$res['salt']));
+                
+        if($type == 'WS1')
+        {
+            $WS1 = 0;
+            if($newAccess === true)
+                $WS1 = 1;
+        }
+        else
+        {
+            $WS2 = 0;
+            if($newAccess === true)
+                $WS2 = 1;
+        }
           
         $cryptedWS1 = Crypt::encrypt($WS1,Crypt::passwordWS(1,$res['salt']));
         $cryptedWS2 = Crypt::encrypt($WS2,Crypt::passwordWS(2,$res['salt']));
