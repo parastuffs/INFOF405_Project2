@@ -6,6 +6,7 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyPair;
@@ -22,6 +23,7 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SealedObject;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.ServerSocketFactory;
 import javax.net.SocketFactory;
@@ -46,6 +48,8 @@ public abstract class WebService implements Runnable {
 	protected final int PORT;
 	protected ServerSocket serverSocket;
 	protected Socket ASsocket;
+	private ObjectInputStream ASSocketOIS;
+	private ObjectOutputStream ASSocketOOS;
 	
 	protected List<Integer> clientIDList;
 	protected List<Key> clientKeyList;
@@ -126,6 +130,7 @@ public abstract class WebService implements Runnable {
 		SocketFactory ASfactory = SocketFactory.getDefault();
 		try {
 			this.ASsocket = ASfactory.createSocket(ASaddress,ASport);
+			this.initASIOStream();
 		} catch (UnknownHostException e) {
 			System.out.println("WEBSERVICE: error connecting to AS:"+e.getMessage());
 			return false;
@@ -152,14 +157,15 @@ public abstract class WebService implements Runnable {
 		}
 		//Objects to send :
 		try {
-			ObjectOutputStream out = new ObjectOutputStream(ASsocket.getOutputStream());
+//			ObjectOutputStream out = new ObjectOutputStream(ASsocket.getOutputStream());
 			ArrayList<Object> message = new ArrayList<Object>();
 			message.add(this.webID); //0
 			message.add(encryptedWSid); //1
 			message.add(encryptedNonce); //2
 			message.add(ASprivateKey);//3 TODO TESTING only
 			message.add(this.WSpublicKey); //4 TODO TESTING ONLY
-			out.writeObject(message); //send the ID and the encrypted ID+challenge
+//			out.writeObject(message); //send the ID and the encrypted ID+challenge
+			this.ASSocketOOS.writeObject(message);
 //			out.flush();
 //			out.close();
 		} catch (IOException e) {
@@ -172,8 +178,9 @@ public abstract class WebService implements Runnable {
 		//receiving objects :
 		SealedObject encryptedASid, encryptedR1, encryptedR2;
 		try {
-			ObjectInputStream in = new ObjectInputStream(ASsocket.getInputStream());
-			ArrayList<?> message = (ArrayList<?>) in.readObject();
+//			ObjectInputStream in = new ObjectInputStream(ASsocket.getInputStream());
+//			ArrayList<?> message = (ArrayList<?>) in.readObject();
+			ArrayList<?> message = (ArrayList<?>) this.ASSocketOIS.readObject();
 			encryptedASid = (SealedObject) message.get(0);
 			encryptedR1 = (SealedObject) message.get(1);
 			encryptedR2 = (SealedObject) message.get(2);
@@ -215,8 +222,9 @@ public abstract class WebService implements Runnable {
 		//STEP 3
 		//Send random2 back :
 		try {
-			ObjectOutputStream out = new ObjectOutputStream(ASsocket.getOutputStream());
-			out.writeObject(decryptedRandom2);
+//			ObjectOutputStream out = new ObjectOutputStream(ASsocket.getOutputStream());
+//			out.writeObject(decryptedRandom2);
+			this.ASSocketOOS.writeObject(decryptedRandom2);
 //			out.flush();
 //			out.close();
 		} catch (IOException e) {
@@ -229,8 +237,9 @@ public abstract class WebService implements Runnable {
 		//receiving objects :
 		SealedObject encryptedKey, encryptedR1bis;
 		try {
-			ObjectInputStream in = new ObjectInputStream(ASsocket.getInputStream());
-			ArrayList<?> message = (ArrayList<?>) in.readObject();
+//			ObjectInputStream in = new ObjectInputStream(ASsocket.getInputStream());
+//			ArrayList<?> message = (ArrayList<?>) in.readObject();
+			ArrayList<?> message = (ArrayList<?>) ASSocketOIS.readObject();
 			encryptedKey = (SealedObject) message.get(0);
 			encryptedR1bis = (SealedObject) message.get(1);
 //			in.close();
@@ -276,19 +285,45 @@ public abstract class WebService implements Runnable {
 
 	/**
 	 * initialise the cipher used to decrypt messages from the AS, using the shared AES key
-	 * TODO modify code for the AES decryption (bytes, IV, ...)
 	 */
 	private void initDecryptWithSharedKey() {
 		try {
 			this.decryptWithASSharedKey = Cipher.getInstance("AES/CBC/PKCS5Padding");
-			this.decryptWithASSharedKey.init(Cipher.DECRYPT_MODE, this.sharedWithASKey);
+			this.decryptWithASSharedKey.init(Cipher.DECRYPT_MODE, this.sharedWithASKey,new IvParameterSpec(new byte[16]));
 		} catch (NoSuchAlgorithmException e) {
 			System.out.println("WebThread: error AES decryption:"+e.getMessage());
 		} catch (NoSuchPaddingException e) {
 			System.out.println("WebThread: error AES decryption:"+e.getMessage());		
 		} catch (InvalidKeyException e) {
 			System.out.println("WebThread: error AES decryption:"+e.getMessage());
+		} catch (InvalidAlgorithmParameterException e) {
+			System.out.println("WebThread: error AES decryption:"+e.getMessage());
 		}
+	}
+	
+	/** 
+	 * Init input/output stream (object) for the AS connection
+	 */
+	private void initASIOStream() {
+//		if(ASSocketOOS == null) {
+		ASSocketOOS = null;
+			try {
+				this.ASSocketOOS = new ObjectOutputStream(this.ASsocket.getOutputStream());
+				System.out.println("WS:initialised ASSocketOOS ok");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+//		}
+			ASSocketOIS = null;
+//		if(ASSocketOIS == null) {
+			try {
+				this.ASSocketOIS = new ObjectInputStream(this.ASsocket.getInputStream());
+				System.out.println("WS:initialised ASSocketOIS ok");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+//		}
+//		return clientOOS;
 	}
 
 	/**
@@ -316,10 +351,12 @@ public abstract class WebService implements Runnable {
 	 */
 	private void addNewClientInfo(int ID, Key sharedKey, int period) {
 		if(! this.clientIDList.contains(ID)) {
+			System.out.println("WS: adding new client: ID="+ID+",cryptoperiod="+period);
 			this.clientIDList.add(ID);
 			this.clientKeyList.add(sharedKey);
 			this.clientPeriodList.add(period);
-		}
+		} else
+			System.out.println("WS: new client already exists");
 	}
 
 	/**
@@ -333,7 +370,7 @@ public abstract class WebService implements Runnable {
 	 * - thread principal : gere le client
 	 */
 	private void mainLoop() {//TODO uncomment
-		//		new Thread(this).start(); //lance le thread AS <-> WS
+				new Thread(this).start(); //lance le thread AS <-> WS
 		//		while(true) { //recoit une connexion et la traite
 		//this.answerClientRequest();
 		//		}
@@ -346,13 +383,13 @@ public abstract class WebService implements Runnable {
 	public void run() {
 		System.out.println("Starting thread AS<->WS");
 		
-		//init input stream
-		ObjectInputStream receiveFromAS = null;
-		try {
-			receiveFromAS = new ObjectInputStream(ASsocket.getInputStream());
-		} catch (IOException e) {
-			System.out.println("WebService Thread: error Getting input stream:"+e.getMessage());
-		}
+//		//init input stream
+//		ObjectInputStream receiveFromAS = null;
+//		try {
+//			receiveFromAS = new ObjectInputStream(ASsocket.getInputStream());
+//		} catch (IOException e) {
+//			System.out.println("WebService Thread: error Getting input stream:"+e.getMessage());
+//		}
 		
 		//init variables
 		Object received;
@@ -363,10 +400,11 @@ public abstract class WebService implements Runnable {
 		Key clientSharedKey;
 		//while connection with AS
 		while(!exit) {
-			System.out.println("WebThread while loop");
+//			System.out.println("WebThread while loop");
 			try {
 				//read message
-				received=receiveFromAS.readObject();
+//				received=receiveFromAS.readObject();
+				received = this.ASSocketOIS.readObject();
 				//get informations
 				ArrayList<?> message = (ArrayList<?>) received;
 				idFromAS = (Integer) message.get(0);
@@ -380,28 +418,44 @@ public abstract class WebService implements Runnable {
 					cryptoperiod = (Integer) encryptedCryptoperiod.getObject(this.decryptWithASSharedKey);
 					//store them
 					this.addNewClientInfo(clientID,clientSharedKey,cryptoperiod);
-				} else
+				} else {
+					System.out.println("WebThread: error wrong AS_ID !");
 					exit = true;
+				}
 			} catch (IOException e) {
-				System.out.println("WebThread reading IO error"+e.getMessage());
+				System.out.println("WebThread IO error:"+e.getMessage());
+//				e.printStackTrace();
 				exit = true;
 			} catch (ClassNotFoundException e) {
-				System.out.println("WebThread Class not found"+e.getMessage());
+				System.out.println("WebThread Class not found:"+e.getMessage());
 				exit = true;
 			} catch (IllegalBlockSizeException e) {
-				System.out.println("WebThread illegal block size error"+e.getMessage());
+				System.out.println("WebThread illegal block size error:"+e.getMessage());
 				exit = true;
 			} catch (BadPaddingException e) {
-				System.out.println("WebThread bad padding error"+e.getMessage());
+				System.out.println("WebThread bad padding error:"+e.getMessage());
 				exit = true;
 			}
 		}
 		
+		closeASSocket();
+//		try {
+//			receiveFromAS.close();
+//			System.out.println("WebThread : AS socket closed");
+//		} catch (IOException e) {
+//			System.out.println("WebThread : error closing AS socket");
+//			e.printStackTrace();
+//		}
+	}
+	
+	private void closeASSocket() {
 		try {
-			receiveFromAS.close();
-			System.out.println("WebThread : closing AS socket");
+			this.ASSocketOIS.close();
+			this.ASSocketOOS.close();
+			this.ASsocket.close();
+			System.out.println("WebService : AS socket closed");
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			System.out.println("WebService: error closing AS socket");
 			e.printStackTrace();
 		}
 	}

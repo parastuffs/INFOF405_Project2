@@ -1,3 +1,4 @@
+package authorisation_server;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -5,6 +6,7 @@ import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyFactory;
@@ -22,14 +24,19 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SealedObject;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.net.ServerSocketFactory;
 
-public class SampleAuthorisationServer {
+public class AuthorisationServer {
 
 
 	static Socket clientSocket;
+	static ObjectOutputStream clientOOS;
+	static ObjectInputStream clientOIS;
 	static Cipher encryptWithWSPublicKey; //TODO Class attributes
 	static Cipher decryptWithASPrivateKey;
+	static Cipher encryptWithWSSharedKey;
 	static int ASid = 42;
 	static List<Long> nonces; //list of random "nonces"
 	static Key AESKeyWithWS; //TODO TESTING purpose; do it in a better way
@@ -42,6 +49,9 @@ public class SampleAuthorisationServer {
 		//init Nonces
 		nonces = new ArrayList<Long>();
 
+
+		clientOOS = null;
+		clientOIS = null;
 		//initiate Socket
 		final int PORT = 42000; //AS_PORT TODO TESTING
 		ServerSocket serverSocket = null;//TODO TESTING -> class attribut
@@ -59,6 +69,7 @@ public class SampleAuthorisationServer {
 		if(successSocket) {
 			try {
 				clientSocket = serverSocket.accept();
+				initWSOutputStream();
 				System.out.println("Auth.Server: New client connected: "+clientSocket.getInetAddress().toString());
 				successWS = true;
 			} catch (IOException e) {
@@ -69,8 +80,11 @@ public class SampleAuthorisationServer {
 		if(successWS) {
 			//NEEDHAM-SCHROEDER protocol (binome du WebService connectToAuthServer())
 			boolean success = handshakeWithWS();
-			if(success)
+			if(success) {
 				System.out.println("Shared Key Successfully with WS");
+				sendClientInfoToWS();//TODO TESTING; make a proper context call to the function; maybe add some parameters too
+				sendClientInfoToWS();//TODO Testing : doesn't add the same client twice :)
+			}
 			else {
 				try {
 					clientSocket.close();
@@ -81,22 +95,46 @@ public class SampleAuthorisationServer {
 				System.out.println("-_- ............");
 			}
 		}
+	}
 
-		// CODE MORT
-		//			ObjectInputStream receiving = new ObjectInputStream(socket.getInputStream());
-		//			ArrayList<?> obj = (ArrayList<?>) receiving.readObject();
-		//			receiving.close();
-		//			int WSid = (Integer) obj.get(0);
-		//			SealedObject seal1 = (SealedObject) obj.get(1);
-		//			SealedObject seal2 = (SealedObject) obj.get(2);
-		//			Key privateKey = (Key) obj.get(3);
-		//
-		//			Cipher rsaDecrypt = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-		//			rsaDecrypt.init(Cipher.DECRYPT_MODE, privateKey);
-		//			int decryptedID = (Integer) seal1.getObject(rsaDecrypt);
-		//			long decryptedNonce = (Long) seal2.getObject(rsaDecrypt);
-		//
-		//			System.out.println("SOOOOOOOOOO:"+WSid+",decrypted:"+decryptedID+","+decryptedNonce);
+	/**
+	 * generates the Session Key for WS<->Client, and sends the (client ID, key, cryptoperiod) to WS
+	 */
+	private static boolean sendClientInfoToWS() {
+		int period = 7200; //2h <-> 7200 seconds
+		Key clientToWSKey = generateAESKey();
+		if(clientToWSKey==null)
+			return false;
+		int clientID = 720;//TODO TESTING ONLY
+		
+		//encrypting :
+		SealedObject encryptedKey, encryptedClientID, encryptedPeriod;
+		try {
+			encryptedKey = new SealedObject(clientToWSKey,encryptWithWSSharedKey);
+			encryptedClientID = new SealedObject(clientID,encryptWithWSSharedKey);
+			encryptedPeriod = new SealedObject(period,encryptWithWSSharedKey);
+		} catch (IllegalBlockSizeException e1) {
+			System.out.println("Auth.Server: error encrypting Client Info:"+e1.getMessage());
+			return false;
+		} catch (IOException e1) {
+			System.out.println("Auth.Server: error encrypting Client Info:"+e1.getMessage());
+			return false;
+		}
+		//Objects to send :
+//		ObjectOutputStream out = getWSOutputStream();
+		try {
+			ArrayList<Object> message = new ArrayList<Object>();
+			message.add(ASid); //0
+			message.add(encryptedClientID);//1
+			message.add(encryptedKey); //2
+			message.add(encryptedPeriod); //3
+//			out.writeObject(message);
+			clientOOS.writeObject(message);
+		} catch (IOException e) {
+			System.out.println("Auth.Server: error WS connection: sending client info:"+e.getMessage());
+			return false;
+		}
+		return true;
 	}
 
 	//NEEDHAM-SCHROEDER protocol (binome du WebService connectToAuthServer())
@@ -106,8 +144,8 @@ public class SampleAuthorisationServer {
 		int WSid;
 		SealedObject encryptedWSid, encryptedR1;
 		try {
-			ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
-			ArrayList<?> message = (ArrayList<?>) in.readObject();
+//			ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
+			ArrayList<?> message = (ArrayList<?>) clientOIS.readObject();
 			WSid = (Integer) message.get(0);
 			encryptedWSid = (SealedObject) message.get(1);
 			encryptedR1 = (SealedObject) message.get(2);
@@ -169,12 +207,13 @@ public class SampleAuthorisationServer {
 		}
 		//Objects to send :
 		try {
-			ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
+//			ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
 			ArrayList<Object> message = new ArrayList<Object>();
 			message.add(encryptedASid); //0
 			message.add(encryptedRandom1); //1
 			message.add(encryptedRandom2);//2
-			out.writeObject(message); //send the encrypted AS_ID + challenge 1 + challenge2
+//			out.writeObject(message); //send the encrypted AS_ID + challenge 1 + challenge2
+			clientOOS.writeObject(message);
 			//			out.flush();
 			//			out.close();
 		} catch (IOException e) {
@@ -185,8 +224,8 @@ public class SampleAuthorisationServer {
 
 		//STEP 3
 		try {
-			ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
-			long receivedRandom2 = (Long) in.readObject();
+//			ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
+			long receivedRandom2 = (Long) clientOIS.readObject();
 			if(receivedRandom2 != random2) {
 				System.out.println("Auth.Server: Step 3 verification FAILED:");
 				System.out.println("Random sent="+random2+",random received="+receivedRandom2);
@@ -205,9 +244,10 @@ public class SampleAuthorisationServer {
 
 		//STEP 4
 		//generate Session Key and send it
-		generateAESKey();
+		AESKeyWithWS = generateAESKey();
 		if(AESKeyWithWS==null)//TODO TESTING only -> proper implement
 			return false;
+		initAESCipher();
 		//encrypting :
 		SealedObject encryptedKey = null;
 		try {
@@ -221,11 +261,12 @@ public class SampleAuthorisationServer {
 		}
 		//Objects to send :
 		try {
-			ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
+//			ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
 			ArrayList<Object> message = new ArrayList<Object>();
 			message.add(encryptedKey); //0
 			message.add(encryptedRandom1); //1, already encrypted at step 2
-			out.writeObject(message); //send the encrypted shared key + challenge 1
+//			out.writeObject(message); //send the encrypted shared key + challenge 1
+			clientOOS.writeObject(message);
 			//					out.flush();
 			//					out.close();
 		} catch (IOException e) {
@@ -237,13 +278,13 @@ public class SampleAuthorisationServer {
 		return true;
 	}
 
-	private static void generateAESKey() { //TODO TESTING... comment en pratique?
+	private static SecretKey generateAESKey() { //TODO TESTING... comment en pratique?
 		try {
 			KeyGenerator kg = KeyGenerator.getInstance("AES");
-			AESKeyWithWS = kg.generateKey();
+			return kg.generateKey();
 		} catch (NoSuchAlgorithmException e) {
 			System.out.println("Auth.Server: error Generating AES Key:"+e.getMessage());
-			AESKeyWithWS = null;
+			return null;
 		}
 	}
 
@@ -252,11 +293,26 @@ public class SampleAuthorisationServer {
 			encryptWithWSPublicKey = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 			encryptWithWSPublicKey.init(Cipher.ENCRYPT_MODE, WSpublicKey);
 		} catch (NoSuchAlgorithmException e) {
-			System.out.println("Auth.Server: error RSA encryption"+e.getMessage());
+			System.out.println("Auth.Server: error RSA cipher init"+e.getMessage());
 		} catch (NoSuchPaddingException e) {
-			System.out.println("Auth.Server: error RSA encryption"+e.getMessage());		
+			System.out.println("Auth.Server: error RSA cipher init"+e.getMessage());		
 		} catch (InvalidKeyException e) {
-			System.out.println("Auth.Server: error RSA encryption"+e.getMessage());
+			System.out.println("Auth.Server: error RSA cipher init"+e.getMessage());
+		}
+	}
+	
+	static void initAESCipher() { //init the cipher for communications with WS (AES)
+		try {
+			encryptWithWSSharedKey = Cipher.getInstance("AES/CBC/PKCS5Padding");
+			encryptWithWSSharedKey.init(Cipher.ENCRYPT_MODE, AESKeyWithWS, new IvParameterSpec(new byte[16]));
+		} catch (NoSuchAlgorithmException e) {
+			System.out.println("Auth.Server: error AES cipher init"+e.getMessage());
+		} catch (NoSuchPaddingException e) {
+			System.out.println("Auth.Server: error AES cipher init"+e.getMessage());		
+		} catch (InvalidKeyException e) {
+			System.out.println("Auth.Server: error AES cipher init"+e.getMessage());
+		} catch (InvalidAlgorithmParameterException e) {
+			System.out.println("Auth.Server: error AES cipher init"+e.getMessage());
 		}
 	}
 
@@ -265,11 +321,11 @@ public class SampleAuthorisationServer {
 			decryptWithASPrivateKey = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 			decryptWithASPrivateKey.init(Cipher.DECRYPT_MODE, ASprivateKey);
 		} catch (NoSuchAlgorithmException e) {
-			System.out.println("Auth.Server: error RSA decryption"+e.getMessage());
+			System.out.println("Auth.Server: error RSA decipher init"+e.getMessage());
 		} catch (NoSuchPaddingException e) {
-			System.out.println("Auth.Server: error RSA decryption"+e.getMessage());		
+			System.out.println("Auth.Server: error RSA decipher init"+e.getMessage());		
 		} catch (InvalidKeyException e) {
-			System.out.println("Auth.Server: error RSA decryption"+e.getMessage());
+			System.out.println("Auth.Server: error RSA decipher init"+e.getMessage());
 		}
 	}
 
@@ -286,5 +342,25 @@ public class SampleAuthorisationServer {
 		}
 		System.out.println("Auth.Server : Nonce generated="+result.longValue());
 		return result.longValue();
+	}
+	
+	private static void initWSOutputStream() { //TODO rename
+		if(clientOOS == null) {
+			try {
+				clientOOS = new ObjectOutputStream(clientSocket.getOutputStream());
+				System.out.println("AS:initialised clientOOS ok");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		if(clientOIS == null) {
+			try {
+				clientOIS = new ObjectInputStream(clientSocket.getInputStream());
+				System.out.println("AS:initialised clientOIS ok");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+//		return clientOOS;
 	}
 }
