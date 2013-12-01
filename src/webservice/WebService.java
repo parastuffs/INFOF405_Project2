@@ -35,22 +35,30 @@ public abstract class WebService implements Runnable {
 	protected static Key ASpublicKey; //TODO recuperer la cle publique depuis le .pem
 	protected static Key ASprivateKey;//TODO TESTING ONLY
 	
-	protected Key sharedKeyWithAS; //AES key between AS and WS
+	protected Key sharedWithASKey; //AES key between AS and WS
 	protected Key WSpublicKey;//TODO recuperer la cle publique depuis le .pem ??
 	protected Key WSprivateKey;//TODO recuperer la cle publique depuis le .pem
 	protected Cipher encryptWithASPublicKey;
 	protected Cipher decryptWithWSPrivateKey;
+	protected Cipher decryptWithASSharedKey;
 
 	protected final int webID; //web service ID
 	protected final int PORT;
 	protected ServerSocket serverSocket;
 	protected Socket ASsocket;
+	
+	protected List<Integer> clientIDList;
+	protected List<Key> clientKeyList;
+	protected List<Integer> clientPeriodList;
 
 	private static List<Long> nonces; //list of random "nonces"
 
 	protected WebService(int port, int ID) {
 		//init variables
 		nonces = new ArrayList<Long>();
+		this.clientIDList = new ArrayList<Integer>();
+		this.clientKeyList = new ArrayList<Key>();
+		this.clientPeriodList = new ArrayList<Integer>();
 		this.PORT = port;
 		this.webID = ID;
 		ServerSocketFactory servFactory = ServerSocketFactory.getDefault();
@@ -245,10 +253,6 @@ public abstract class WebService implements Runnable {
 				System.out.println("Random sent="+random1+",random received="+decryptedRandom1bis);
 				return false;
 			}
-			if(decryptedKey==null) {
-				System.out.println("WebService: AES null Key received");
-				return false;
-			}
 		} catch (IllegalBlockSizeException e) {
 			System.out.println("WEBSERVICE: error AS connection: decrypting step4:"+e.getMessage());
 			return false;
@@ -263,10 +267,28 @@ public abstract class WebService implements Runnable {
 			return false;
 		}
 		
-		this.sharedKeyWithAS = decryptedKey;
+		this.sharedWithASKey = decryptedKey;
+		this.initDecryptWithSharedKey();
 		//end of STEP 4
 
 		return true;
+	}
+
+	/**
+	 * initialise the cipher used to decrypt messages from the AS, using the shared AES key
+	 * TODO modify code for the AES decryption (bytes, IV, ...)
+	 */
+	private void initDecryptWithSharedKey() {
+		try {
+			this.decryptWithASSharedKey = Cipher.getInstance("AES/CBC/PKCS5Padding");
+			this.decryptWithASSharedKey.init(Cipher.DECRYPT_MODE, this.sharedWithASKey);
+		} catch (NoSuchAlgorithmException e) {
+			System.out.println("WebThread: error AES decryption:"+e.getMessage());
+		} catch (NoSuchPaddingException e) {
+			System.out.println("WebThread: error AES decryption:"+e.getMessage());		
+		} catch (InvalidKeyException e) {
+			System.out.println("WebThread: error AES decryption:"+e.getMessage());
+		}
 	}
 
 	/**
@@ -289,9 +311,15 @@ public abstract class WebService implements Runnable {
 	 * - ID du client
 	 * - la cle partagee entre WS et Client
 	 * - la cryptoperiode de la cle
+	 * 
+	 * TODO N.B. En pratique, il serait peut-etre plus utile de garder la liste sur disque dur?
 	 */
-	private void addNewClientInfo() {
-
+	private void addNewClientInfo(int ID, Key sharedKey, int period) {
+		if(! this.clientIDList.contains(ID)) {
+			this.clientIDList.add(ID);
+			this.clientKeyList.add(sharedKey);
+			this.clientPeriodList.add(period);
+		}
 	}
 
 	/**
@@ -317,7 +345,64 @@ public abstract class WebService implements Runnable {
 	@Override
 	public void run() {
 		System.out.println("Starting thread AS<->WS");
+		
+		//init input stream
+		ObjectInputStream receiveFromAS = null;
+		try {
+			receiveFromAS = new ObjectInputStream(ASsocket.getInputStream());
+		} catch (IOException e) {
+			System.out.println("WebService Thread: error Getting input stream:"+e.getMessage());
+		}
+		
+		//init variables
+		Object received;
+		boolean exit = false;
+		int idFromAS;
+		SealedObject encryptedClientID, encryptedClientSharedKey, encryptedCryptoperiod;
+		int clientID, cryptoperiod;
+		Key clientSharedKey;
 		//while connection with AS
-		this.addNewClientInfo();
+		while(!exit) {
+			System.out.println("WebThread while loop");
+			try {
+				//read message
+				received=receiveFromAS.readObject();
+				//get informations
+				ArrayList<?> message = (ArrayList<?>) received;
+				idFromAS = (Integer) message.get(0);
+				if(idFromAS == ASid) {
+					encryptedClientID = (SealedObject) message.get(1);
+					encryptedClientSharedKey = (SealedObject) message.get(2);
+					encryptedCryptoperiod = (SealedObject) message.get(3);
+					//decrypt info
+					clientID = (Integer) encryptedClientID.getObject(this.decryptWithASSharedKey);
+					clientSharedKey = (Key) encryptedClientSharedKey.getObject(this.decryptWithASSharedKey);
+					cryptoperiod = (Integer) encryptedCryptoperiod.getObject(this.decryptWithASSharedKey);
+					//store them
+					this.addNewClientInfo(clientID,clientSharedKey,cryptoperiod);
+				} else
+					exit = true;
+			} catch (IOException e) {
+				System.out.println("WebThread reading IO error"+e.getMessage());
+				exit = true;
+			} catch (ClassNotFoundException e) {
+				System.out.println("WebThread Class not found"+e.getMessage());
+				exit = true;
+			} catch (IllegalBlockSizeException e) {
+				System.out.println("WebThread illegal block size error"+e.getMessage());
+				exit = true;
+			} catch (BadPaddingException e) {
+				System.out.println("WebThread bad padding error"+e.getMessage());
+				exit = true;
+			}
+		}
+		
+		try {
+			receiveFromAS.close();
+			System.out.println("WebThread : closing AS socket");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }
