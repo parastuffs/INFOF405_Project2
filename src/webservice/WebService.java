@@ -14,6 +14,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -53,16 +54,22 @@ public abstract class WebService implements Runnable {
 	
 	protected List<Integer> clientIDList;
 	protected List<Key> clientKeyList;
-	protected List<Integer> clientPeriodList;
+	protected List<Long> clientPeriodList;
 
 	private static List<Long> nonces; //list of random "nonces"
 
+	/**
+	 * Constructor : initialise les variables, puis essaie de se connecter à l'AS, et si ça marche, 
+	 * entre dans la boucle principale
+	 * @param port Port utilisé par le service; 2013 si blackboard, 2014 si keychain
+	 * @param ID l'ID du service : blackboard=0, keychain=1
+	 */
 	protected WebService(int port, int ID) {
 		//init variables
 		nonces = new ArrayList<Long>();
 		this.clientIDList = new ArrayList<Integer>();
 		this.clientKeyList = new ArrayList<Key>();
-		this.clientPeriodList = new ArrayList<Integer>();
+		this.clientPeriodList = new ArrayList<Long>();
 		this.PORT = port;
 		this.webID = ID;
 		ServerSocketFactory servFactory = ServerSocketFactory.getDefault();
@@ -277,7 +284,7 @@ public abstract class WebService implements Runnable {
 		}
 		
 		this.sharedWithASKey = decryptedKey;
-		this.initDecryptWithSharedKey();
+		this.decryptWithASSharedKey = this.initDecryptWithSharedKey(this.sharedWithASKey);
 		//end of STEP 4
 
 		return true;
@@ -285,11 +292,16 @@ public abstract class WebService implements Runnable {
 
 	/**
 	 * initialise the cipher used to decrypt messages from the AS, using the shared AES key
+	 * @param sharedKey : key to decipher
+	 * @return the Cipher needed to decrypt a sealed object; null if an error occured
 	 */
-	private void initDecryptWithSharedKey() {
+	private Cipher initDecryptWithSharedKey(Key sharedKey) {
+		Cipher res = null;
 		try {
-			this.decryptWithASSharedKey = Cipher.getInstance("AES/CBC/PKCS5Padding");
-			this.decryptWithASSharedKey.init(Cipher.DECRYPT_MODE, this.sharedWithASKey,new IvParameterSpec(new byte[16]));
+//			this.decryptWithASSharedKey = Cipher.getInstance("AES/CBC/PKCS5Padding");
+//			this.decryptWithASSharedKey.init(Cipher.DECRYPT_MODE, this.sharedWithASKey,new IvParameterSpec(new byte[16]));
+			res = Cipher.getInstance("AES/CBC/PKCS5Padding");
+			res.init(Cipher.DECRYPT_MODE, sharedKey,new IvParameterSpec(new byte[16]));
 		} catch (NoSuchAlgorithmException e) {
 			System.out.println("WebThread: error AES decryption:"+e.getMessage());
 		} catch (NoSuchPaddingException e) {
@@ -299,6 +311,7 @@ public abstract class WebService implements Runnable {
 		} catch (InvalidAlgorithmParameterException e) {
 			System.out.println("WebThread: error AES decryption:"+e.getMessage());
 		}
+		return res;
 	}
 	
 	/** 
@@ -330,14 +343,27 @@ public abstract class WebService implements Runnable {
 	 * random nonce generator
 	 * @return
 	 */
-	private static long generateNonce() {
+	private static long generateNonce() { //TODO change long -> byte[16]
 		Random generator = new Random();
 		Long result = generator.nextLong();
 		while(nonces.contains(result)) {
 			result = generator.nextLong();
 			System.out.println("WebServer : SHOULD NOT BE HERE... ELSE, CRAPPY RANDOM GENERATOR");
 		}
-		System.out.println("WebServer : Nonce generated="+result.longValue());
+//		System.out.println("WebServer : Nonce generated="+result.longValue());
+//		byte[] res = new byte[16];
+//		Random rand=null;
+//		try {
+//			rand = SecureRandom.getInstance("SHA1PRNG");
+//		} catch (NoSuchAlgorithmException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		rand.nextBytes(res);
+//		System.out.print("WebServer : Nonce generated=");
+//		for(int i=0;i<16;i++)
+//			System.out.printf("0x%02X ", res[i]);
+//		return result;
 		return result.longValue();
 	}
 
@@ -345,7 +371,7 @@ public abstract class WebService implements Runnable {
 	 * recoit de l'AS les infos du client qui veut se connecter :
 	 * - ID du client
 	 * - la cle partagee entre WS et Client
-	 * - la cryptoperiode de la cle
+	 * - la cryptoperiode de la cle en secondes
 	 * 
 	 * TODO N.B. En pratique, il serait peut-etre plus utile de garder la liste sur disque dur?
 	 */
@@ -354,7 +380,12 @@ public abstract class WebService implements Runnable {
 			System.out.println("WS: adding new client: ID="+ID+",cryptoperiod="+period);
 			this.clientIDList.add(ID);
 			this.clientKeyList.add(sharedKey);
-			this.clientPeriodList.add(period);
+			long expTime;
+			if(period>0)
+				expTime = System.currentTimeMillis() + period*1000; //1000 for ms
+			else //if error on cryptoperiod :
+				expTime = System.currentTimeMillis(); 
+			this.clientPeriodList.add(expTime);
 		} else
 			System.out.println("WS: new client already exists");
 	}
@@ -362,7 +393,7 @@ public abstract class WebService implements Runnable {
 	/**
 	 * recoit la requete chiffree du client, la dechiffre, et repond avec le service demande
 	 */
-	protected abstract void answerClientRequest();
+	protected abstract void answerClientRequest(int request);
 
 	/**
 	 * boucle principale du serveur :
@@ -370,10 +401,94 @@ public abstract class WebService implements Runnable {
 	 * - thread principal : gere le client
 	 */
 	private void mainLoop() {//TODO uncomment
-				new Thread(this).start(); //lance le thread AS <-> WS
-		//		while(true) { //recoit une connexion et la traite
-		//this.answerClientRequest();
-		//		}
+		new Thread(this).start(); //lance le thread AS <-> WS qui gere l'ajout de nouveaux clients
+		//recoit une connexion et la traite
+		while(true) {
+			Socket clientSocket;
+			ObjectOutputStream out;
+			ObjectInputStream in;
+			try {
+				System.out.println("WS: waiting for new client...");
+				clientSocket = this.serverSocket.accept();
+				System.out.println("WS: new client connected");				
+				out = new ObjectOutputStream(clientSocket.getOutputStream());
+				in = new ObjectInputStream(clientSocket.getInputStream());
+				
+				//recupere le message depuis l'input
+				ArrayList<?> message = (ArrayList<?>) in.readObject();
+				//recupere l'ID du client et verifie si correct et si cryptoperiode valide
+				int clientID = (Integer) message.get(0);
+				System.out.println("Client ID : "+clientID);
+				boolean verif = this.verifyClient(clientID);
+				if(verif) { //si ok, dechiffre la requete et la traite
+					System.out.println("Verification succeeded, answering");
+					int request = this.decipherRequest( (SealedObject) message.get(1), clientID);
+					this.answerClientRequest(request);
+				} else
+					System.out.println("Verification failed"); //DEBUG
+				//si non ou si requete traitee, ferme la connexion
+				out.close();
+				in.close();
+				clientSocket.close();
+				System.out.println("WS: connection with the client closed");
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	/**
+	 * recupere l'ID du client et verifie si correct et si sa cryptoperiode est valide
+	 * @param clientID ID a verifier
+	 * @return true si client correct, false sinon
+	 */
+	private boolean verifyClient(int clientID) {
+		int index = clientIDList.indexOf(clientID);
+		if(index<0) {
+			System.out.println("WS: client non trouve dans la liste");
+			return false; 
+		}
+		long period = this.clientPeriodList.get(index) - System.currentTimeMillis();
+		if(period>0) {
+			System.out.println("Cryptoperiod still valid:"+period+"(ms)");
+		} else {
+			System.out.println("Cryptoperiod not valid anymore:"+period+"(ms)");
+			return false;
+		}
+		return false;
+	}
+
+	/**
+	 * dechiffre la requete en utilisant la clef correspondante dans la liste des clefs
+	 * @param encryptedRequest requete a dechiffrer
+	 * @param clientID ID pour recuperer la clef de dechiffrement
+	 * @return l'ID de la requete, -1 en cas d'erreur
+	 */
+	private int decipherRequest(SealedObject encryptedRequest, int clientID) {
+		int index = this.clientIDList.indexOf(clientID);
+		Key decryptKey = this.clientKeyList.get(index); //get the key
+		Cipher ciph = this.initDecryptWithSharedKey(decryptKey); //get the decipher
+		int request=-1;
+		try {
+			request = (Integer) encryptedRequest.getObject(ciph);
+		} catch (IllegalBlockSizeException e) {
+			System.out.println("WS: decipherRequest failed:");
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			System.out.println("WS: decipherRequest failed:");
+			e.printStackTrace();
+		} catch (IOException e) {
+			System.out.println("WS: decipherRequest failed:");
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			System.out.println("WS: decipherRequest failed:");
+			e.printStackTrace();
+		}
+		return request;
 	}
 
 	/**
