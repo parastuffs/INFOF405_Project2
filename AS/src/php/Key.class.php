@@ -51,9 +51,10 @@ class Key extends General
         $certificate = openssl_csr_sign($certificateSign, null, $privateKey, 365);
         openssl_csr_export($certificateSign, $csrout);
         openssl_x509_export($certificate, $certout);
+        openssl_pkey_export($privateKey, $signPass, sha1('69zfe8949fze)àç!è!ç98'.Crypt::SPECIFIC_SALT));
         
         //Done.
-        return array('resultState'=>true,'resultText'=>'Keys successfully created!','publicKey'=>$publicKey,'privateKey'=>$privateKey,'certificateSign'=>$csrout,'certificate'=>$certout);
+        return array('resultState'=>true,'resultText'=>'Keys successfully created!','publicKey'=>$publicKey,'privateKey'=>$privateKey,'certificateSign'=>$csrout,'certificate'=>$certout,'signPass'=>$signPass);
     }
     
     /**
