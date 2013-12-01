@@ -5,6 +5,9 @@ $npage=0;
 if(isset($_GET['npage']))
     $npage = $_GET['npage'];
 
+if(!preg_match('#^[0-9]{1,5}$#', $npage))
+    $npage = 0;
+    
 //We check if we have to change the rights to a client or to delete it
 if(isset($_GET['type']) && isset($_GET['id']))
 {
@@ -48,23 +51,23 @@ else
     foreach($list['user'] as $key => $value)
     {
         $accessWS1 = 'yes';
-        $urlchangeAccessWS1 = '<a href="?page=listUsers&amp;generalToken='.$Access->getGeneralToken().'&amp;type=WS1&amp;choice=no&amp;id=CL'.htmlspecialchars($key).'">Change to no</a>';
+        $urlchangeAccessWS1 = '<a href="?page=listUsers&amp;generalToken='.$Access->getGeneralToken().'&amp;type=WS1&amp;choice=no&amp;id=CL'.htmlspecialchars($key).'&amp;npage='.$npage.'">Change to no</a>';
         $accessWS2 = 'yes';
-        $urlchangeAccessWS2 = '<a href="?page=listUsers&amp;generalToken='.$Access->getGeneralToken().'&amp;type=WS2&amp;choice=no&amp;id=CL'.htmlspecialchars($key).'">Change to no</a>';
+        $urlchangeAccessWS2 = '<a href="?page=listUsers&amp;generalToken='.$Access->getGeneralToken().'&amp;type=WS2&amp;choice=no&amp;id=CL'.htmlspecialchars($key).'&amp;npage='.$npage.'">Change to no</a>';
         
         if($list['user'][$key]['WS1'] === false)
         {
             $accessWS1 = 'no';
-            $urlchangeAccessWS1 = '<a href="?page=listUsers&amp;generalToken='.$Access->getGeneralToken().'&amp;type=WS1&amp;choice=yes&amp;id=CL'.htmlspecialchars($key).'">Change to yes</a>';
+            $urlchangeAccessWS1 = '<a href="?page=listUsers&amp;generalToken='.$Access->getGeneralToken().'&amp;type=WS1&amp;choice=yes&amp;id=CL'.htmlspecialchars($key).'&amp;npage='.$npage.'">Change to yes</a>';
         }
         
         if($list['user'][$key]['WS2'] === false)
         {
             $accessWS2 = 'no';
-            $urlchangeAccessWS2 = '<a href="?page=listUsers&amp;generalToken='.$Access->getGeneralToken().'&amp;type=WS2&amp;choice=yes&amp;id=CL'.htmlspecialchars($key).'">Change to yes</a>';
+            $urlchangeAccessWS2 = '<a href="?page=listUsers&amp;generalToken='.$Access->getGeneralToken().'&amp;type=WS2&amp;choice=yes&amp;id=CL'.htmlspecialchars($key).'&amp;npage='.$npage.'">Change to yes</a>';
         }
         
-        $urlDelete = '<a href="?page=listUsers&amp;generalToken='.$Access->getGeneralToken().'&amp;type=Delete&amp;id=CL'.htmlspecialchars($key).'">Delete</a>';
+        $urlDelete = '<a href="?page=listUsers&amp;generalToken='.$Access->getGeneralToken().'&amp;type=Delete&amp;id=CL'.htmlspecialchars($key).'&amp;npage='.$npage.'">Delete</a>';
         
         echo '<tr>';
         echo '  <td>'.htmlspecialchars($key).'</td>';
@@ -78,7 +81,7 @@ else
     
     echo '<table>';
     
-    if($list['nbrPages'] > 0)
+    if(isset($list['nbrPages']) && $list['nbrPages'] > 0)
     {
         echo '<br/><br/>List of pages<br/>';
         for($i=0; $i <= $list['nbrPages']; $i++)

@@ -2,10 +2,29 @@
 //Creation of .htaccess & .htpassword file
 if(!file_exists('.htaccess'))
 {
-    //We ask for a password if nothing was given
-    if(!isset($_POST['name']) || !isset($_POST['pass']))
+    $formulaire = true;
+    if(isset($_POST['name']) && isset($_POST['pass']))
     {
-        echo '<strong>Define a username and a password for the admin section.</strong><br/><br/>
+        if(preg_match('#^[a-zA-Z]{1,25}$#',$_POST['name']) && preg_match('#^.{1,50}$#',$_POST['pass']))
+            $formulaire = false;
+            
+        if($formulaire === true)
+            echo 'Give a valid username (a-zA-Z, minimum 1 character, maximum 25) and password (minimum 1 character, maximum 50) please.<br/><br/>';
+    }
+    
+    //We ask for a password if nothing was given
+    if($formulaire === true)
+    {
+        echo '
+        Hello! Welcome in this webinterface made for the project INFO-F405!<br/>
+        Please, be sure that:<br/>
+         - The repository for this website has the rights to create and destroy files.<br/>
+         - You have already installed the database with the query in the file "info405.sql".<br/>
+         - You have specified the right username and password for the database access in the file AS/src/php/General.class.php.<br/>
+         - You have activated the https for this website (cf. report).<br/>
+         - You have activated the open_ssl module in wamp.<br/>
+        <br/>
+        <strong>Define a username and a password for the admin section.</strong><br/><br/>
         After that, if you have problem with the authentification (like it keeps asking a password), <br/>
         be sure that your Apache server use the crypt() function into the .htpasswd file (httpd.conf). <br/>
         If there is still a problem, remplace your login directly into the .htpasswd file without crypting it. <br/> 

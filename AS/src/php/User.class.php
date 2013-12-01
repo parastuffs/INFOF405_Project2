@@ -85,6 +85,11 @@ class User extends General
         if(!isset($vf['id']))
             return array('resultState'=>false, 'resultText'=>'This user is not in the db anymore!');
         
+        //We delete the files associated to his RSA key
+        $k = getAsymKeysIn($owner);  
+        if(!empty($k['id']))
+            Download::destroyAsymKeyFile($k['id']);
+        
         //We delete all its information
         $p = $this->db->prepare("DELETE FROM user WHERE id = :id LIMIT 1");
 		$p->execute(array('id'=>$id));

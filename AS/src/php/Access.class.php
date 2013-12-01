@@ -120,7 +120,7 @@ class Access extends General
         if(Crypt::tokenGeneralUrl(file_get_contents('src/files/security.token')) == $token)
             return array('resultState'=>true,'resultText'=>'');
         else
-            return array('resultState'=>false,'resultText'=>'Sorry this page will not be displayed. Why? Security measure. Cf. report.<br/>You cannot open two pages at the same time.');
+            return array('resultState'=>false,'resultText'=>'Sorry this page will not be displayed. Why? Security measure. Cf. report.<br/>You cannot open two pages at the same time.<br/>Please go back at the <a href="?page=index">index</a.');
     }
     
     /**
