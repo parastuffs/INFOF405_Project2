@@ -44,6 +44,8 @@ public abstract class WebService implements Runnable {
 	protected Cipher encryptWithASPublicKey;
 	protected Cipher decryptWithWSPrivateKey;
 	protected Cipher decryptWithASSharedKey;
+	protected static final int ENCRYPT = 0;
+	protected static final int DECRYPT = 1;
 
 	protected final int webID; //web service ID
 	protected final int PORT;
@@ -284,24 +286,34 @@ public abstract class WebService implements Runnable {
 		}
 		
 		this.sharedWithASKey = decryptedKey;
-		this.decryptWithASSharedKey = this.initDecryptWithSharedKey(this.sharedWithASKey);
+		this.decryptWithASSharedKey = this.getCipherOfSharedKey(this.sharedWithASKey,DECRYPT);
 		//end of STEP 4
 
 		return true;
 	}
 
 	/**
-	 * initialise the cipher used to decrypt messages from the AS, using the shared AES key
-	 * @param sharedKey : key to decipher
-	 * @return the Cipher needed to decrypt a sealed object; null if an error occured
+	 * initialise the cipher used to encrypt/decrypt messages, using the shared AES key
+	 * @param sharedKey key to decipher
+	 * @param mode ENCRYPT or DECRYPT according to the use
+	 * @return the Cipher needed to en/de-crypt a sealed object; null if an error occured
 	 */
-	private Cipher initDecryptWithSharedKey(Key sharedKey) {
+	protected Cipher getCipherOfSharedKey(Key sharedKey, int mode) {
 		Cipher res = null;
 		try {
 //			this.decryptWithASSharedKey = Cipher.getInstance("AES/CBC/PKCS5Padding");
 //			this.decryptWithASSharedKey.init(Cipher.DECRYPT_MODE, this.sharedWithASKey,new IvParameterSpec(new byte[16]));
 			res = Cipher.getInstance("AES/CBC/PKCS5Padding");
-			res.init(Cipher.DECRYPT_MODE, sharedKey,new IvParameterSpec(new byte[16]));
+			int opmode;
+			if(mode==ENCRYPT)
+				opmode = Cipher.ENCRYPT_MODE;
+			else if(mode==DECRYPT)
+				opmode = Cipher.DECRYPT_MODE;
+			else
+				opmode = -1;
+			
+			res.init(opmode, sharedKey,new IvParameterSpec(new byte[16]));
+			
 		} catch (NoSuchAlgorithmException e) {
 			System.out.println("WebThread: error AES decryption:"+e.getMessage());
 		} catch (NoSuchPaddingException e) {
@@ -391,11 +403,6 @@ public abstract class WebService implements Runnable {
 	}
 
 	/**
-	 * recoit la requete chiffree du client, la dechiffre, et repond avec le service demande
-	 */
-	protected abstract void answerClientRequest(int request);
-
-	/**
 	 * boucle principale du serveur :
 	 * - cree un thread pour ajouter les infos venant de l'AS
 	 * - thread principal : gere le client
@@ -423,7 +430,7 @@ public abstract class WebService implements Runnable {
 				if(verif) { //si ok, dechiffre la requete et la traite
 					System.out.println("Verification succeeded, answering");
 					int request = this.decipherRequest( (SealedObject) message.get(1), clientID);
-					this.answerClientRequest(request);
+					this.answerClientRequest(request,clientID,out);
 				} else
 					System.out.println("Verification failed"); //DEBUG
 				//si non ou si requete traitee, ferme la connexion
@@ -463,15 +470,14 @@ public abstract class WebService implements Runnable {
 	}
 
 	/**
-	 * dechiffre la requete en utilisant la clef correspondante dans la liste des clefs
+	 * dechiffre la requete du client en utilisant la clef correspondante dans la liste des clefs
 	 * @param encryptedRequest requete a dechiffrer
 	 * @param clientID ID pour recuperer la clef de dechiffrement
 	 * @return l'ID de la requete, -1 en cas d'erreur
 	 */
 	private int decipherRequest(SealedObject encryptedRequest, int clientID) {
-		int index = this.clientIDList.indexOf(clientID);
-		Key decryptKey = this.clientKeyList.get(index); //get the key
-		Cipher ciph = this.initDecryptWithSharedKey(decryptKey); //get the decipher
+		Key decryptKey = this.getClientKey(clientID);
+		Cipher ciph = this.getCipherOfSharedKey(decryptKey,DECRYPT); //get the decipher
 		int request=-1;
 		try {
 			request = (Integer) encryptedRequest.getObject(ciph);
@@ -490,6 +496,20 @@ public abstract class WebService implements Runnable {
 		}
 		return request;
 	}
+	
+	protected Key getClientKey(int clientID) {
+		int index = this.clientIDList.indexOf(clientID);
+		if(index>=0)
+			return this.clientKeyList.get(index);
+		else 
+			return null;
+	}
+	
+	/**
+	 * recoit la requete du client et repond avec le service demande
+	 * @param request ID de la requete
+	 */
+	protected abstract void answerClientRequest(int request, int clientID, ObjectOutputStream out);
 
 	/**
 	 * Thread qui s'occupe de rajouter les infos des nouveaux clients, recues de l'AS

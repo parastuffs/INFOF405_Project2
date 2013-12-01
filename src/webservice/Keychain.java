@@ -1,14 +1,16 @@
 package webservice;
 
+import java.io.ObjectOutputStream;
+
 public class Keychain extends WebService {
 	private static final int KEY_PORT = 2014; //keychain port
-	private static final int KEY_ID = 1; //keychain service ID
+	private static final int KEY_ID = 2; //keychain service ID
 	
 	public Keychain() {
 		super(KEY_PORT,KEY_ID);
 	}
 	@Override
-	protected void answerClientRequest() {
+	protected void answerClientRequest(int request, int clientID, ObjectOutputStream out){
 		// TODO Auto-generated method stub
 		
 	}
