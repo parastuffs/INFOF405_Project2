@@ -49,11 +49,12 @@ public class AuthorisationServer implements Runnable{
 	private Cipher decryptWithASPrivateKey;
 	private Cipher encryptWithWSSharedKey;
 	private int ASid = 42;
-	private List<Long> nonces; //list of random "nonces"
+	private List<byte[]> nonces; //list of random "nonces"
 	private Key AESKeyWithWS; //TODO TESTING purpose; do it in a better way
 	private PrivateKey ASprivateKey;
 	private PublicKey WS1publicKey;
 	private PublicKey WS2publicKey;
+	private final int CRYPTOPERIOD = 7200;//2 hours
 	
 	/**
 	 * Map of clients public keys.
@@ -68,7 +69,7 @@ public class AuthorisationServer implements Runnable{
 	public AuthorisationServer() {
 
 		//init Nonces
-		nonces = new ArrayList<Long>();
+		nonces = new ArrayList<byte[]>();
 		//initiate Socket
 		ServerSocketFactory servFactory = ServerSocketFactory.getDefault();
 		try {
@@ -77,15 +78,6 @@ public class AuthorisationServer implements Runnable{
 			System.out.println("Auth.Server: error creating server socket:"+e.getMessage());
 		} 
 	}
-
-	//public static void main(String[] args) {
-		//TODO TESTING PURPOSES
-		//For real AS : additional verifications : 
-		//- check if WS_id in the list of WS when receiving STEP 1
-
-		//get connection from WS
-
-	//}
 
 
 	private boolean handshakeWithClient(ArrayList<Object> request) throws IOException, ClassNotFoundException {
@@ -140,7 +132,6 @@ public class AuthorisationServer implements Runnable{
 		message.add(encryptedNonce4);//3
 		out.writeObject(message);
 		out.flush();
-		out.close();
 		//end of STEP 2
 
 		//
@@ -156,6 +147,13 @@ public class AuthorisationServer implements Runnable{
 		}
 		in.close();
 		//end of STEP 3
+		
+		//
+		//Now, send the symetric key to the client.
+		//
+		sendAESKeyToClient(r3Challenge, requestClientID, out);
+
+		out.close();
 		
 		return true;
 	}
@@ -469,8 +467,25 @@ public class AuthorisationServer implements Runnable{
 		}
 	}
 	
-	private void sendAESKeyToClient() {
+	private void sendAESKeyToClient(byte[] r3, int clientID, ObjectOutputStream oos) {
+		Key clientToWSKey = generateAESKey();
 		
+		//encrypting:
+		SealedObject encryptedKey, encryptedR3, encryptedPeriod;
+		encryptedKey = RSACipher(clientToWSKey, this.clientPublicKey.get(clientID)); 
+		encryptedR3 = RSACipher(r3, this.clientPublicKey.get(clientID));
+		encryptedPeriod = RSACipher(this.CRYPTOPERIOD, this.clientPublicKey.get(clientID));
+		
+		//Objects to send:
+		ArrayList<Object> message = new ArrayList<Object>();
+		message.add(encryptedKey);//0
+		message.add(encryptedPeriod); //1
+		message.add(encryptedR3);//2
+		try {
+			oos.writeObject(message);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	@Override
 	public void run() {
@@ -488,9 +503,7 @@ public class AuthorisationServer implements Runnable{
 					
 					int acceptedID = (int)distantObjects.get(0);
 					if(acceptedID == this.CLIENT_ID) {//We have a user
-						if(handshakeWithClient(distantObjects)) {
-							sendAESKeyToClient();
-						}
+						handshakeWithClient(distantObjects);
 					}
 					else if(acceptedID == this.PORT_WS1) {//First WS
 						handshakeWithWS();

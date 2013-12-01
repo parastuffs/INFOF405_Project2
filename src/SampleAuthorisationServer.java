@@ -1,4 +1,3 @@
-package authorisation_server;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;

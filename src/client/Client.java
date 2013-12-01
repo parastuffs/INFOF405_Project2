@@ -1,6 +1,9 @@
 package client;
 import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -75,6 +78,15 @@ public class Client {
 	 */
 	private void loadPrivateKey(String filename) {
 		File f = new File(filename);
+		FileInputStream fis;
+		try {
+			fis = new FileInputStream(f);
+			DataInputStream dis = new DataInputStream(fis);
+			
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
 		
 	}
 	
@@ -118,7 +130,7 @@ public class Client {
 		message.add(CLIENT_ID);
 		message.add(AS_ID);
 		//TODO adding the private key to the list is temporary, for testing purpose only
-		message.add(this.clientPrivateKey);
+		//message.add(this.clientPrivateKey);
 		message.add(encryptedClientID);
 		message.add(encryptedNonce);
 
@@ -273,9 +285,12 @@ public class Client {
 	
 	private void writeBlackBoard() {
 		
-		System.out.println("Alright. Please type hereunder the write on your black board:");
+		System.out.println("Alright. Please type hereunder the message to write on your black board:");
 		Scanner sc = new Scanner(System.in);
-		String message = sc.nextLine();
+		String message = "Lamasticot";
+		while(sc.hasNextLine()) {
+			message += sc.nextLine();
+		}
 		sc.close();
 		
 		try {
@@ -379,6 +394,13 @@ public class Client {
 	}
 	
 	/**
+	 * Destroy the shared AES key.
+	 */
+	public void destroyAESKey() {
+		this.sharedKeyWS1 = null;
+	}
+	
+	/**
 	 * Closes the connection with AS.
 	 */
 	private void closeConnectionAS() {
@@ -401,9 +423,8 @@ public class Client {
 		System.out.println("3 - Display all your passwords");
 		System.out.println("4 - Add a new password");
 		Scanner sc = new Scanner(System.in);
-		String str = sc.nextLine();
+		int uChoice = sc.nextInt();
 		sc.close();
-		int uChoice = Integer.parseInt(str);
 		if( uChoice == 1) {
 			c.printBlackBoard();
 		}
@@ -417,16 +438,16 @@ public class Client {
 			c.addPasswd();
 		}
 		
-		Thread t = new Thread(new TestServer());
-		t.start();
-		Thread t1 = new Thread(new TestAESServer());
-		t1.start();
+		//Thread t = new Thread(new TestServer());
+		//t.start();
+		//Thread t1 = new Thread(new TestAESServer());
+		//t1.start();
 		
 		try {
 			c.requestAccessBlackBoard();
-			c.testAESConnection();
+			//c.testAESConnection();
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
-				| IllegalBlockSizeException | IOException | InvalidAlgorithmParameterException 
+				| IllegalBlockSizeException | IOException 
 				| ClassNotFoundException e) {
 			e.printStackTrace();
 		}
