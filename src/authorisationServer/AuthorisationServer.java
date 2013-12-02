@@ -45,7 +45,7 @@ public class AuthorisationServer implements Runnable{
 	private final int WS1_ID = 1;
 	private final int WS2_ID = 2;
 	private Socket clientSocket;
-	private Cipher encryptWithWSPublicKey;
+	private Cipher encryptWithWS1PublicKey, encryptWithWS2PublicKey;
 	private Cipher decryptWithASPrivateKey;
 	private Cipher encryptWithWSSharedKey;
 	private List<byte[]> nonces; //list of random "nonces"
@@ -58,6 +58,9 @@ public class AuthorisationServer implements Runnable{
 	//TODO for testing, remove when DB OK
 	private final String PUBLICKEYFILE_CLIENT = "certs/key.CL1.public.pem";
 	private final String PRIVATEKEYFILE_AS = "certs/key.AS.priv.pem";
+	private final String PUBLICKEYFILE_WS1 = ""; //TODO 
+	private final String PUBLICKEYFILE_WS2 = ""; //TODO
+	
 	
 	/**
 	 * Map of clients public keys.
@@ -85,6 +88,7 @@ public class AuthorisationServer implements Runnable{
 		this.clientPublicKey = new HashMap<Integer, PublicKey>();
 		this.clientPublicKey.put(this.CLIENTID, temp);
 		this.ASprivateKey = loadPrivateKey(this.PRIVATEKEYFILE_AS, "RSA");
+		//TODO Load also the 2 RSA public keys for WS1, WS2
 		
 	}
 
@@ -307,6 +311,7 @@ public class AuthorisationServer implements Runnable{
 	//NEEDHAM-SCHROEDER protocol (binome du WebService connectToAuthServer())
 	private boolean handshakeWithWS(ArrayList<Object> request) {
 		System.out.println("Starting handshake with WS");
+		
 		//STEP 1
 		//receiving objects :
 		int WSid;
@@ -315,10 +320,17 @@ public class AuthorisationServer implements Runnable{
 		WSid = (Integer) message1.get(0);
 		encryptedWSid = (SealedObject) message1.get(1);
 		encryptedR1 = (SealedObject) message1.get(2);
-		Key ASPrivateKey = (Key) message1.get(3); //TODO TESTING ONLY
-		Key WSPublicKey = (Key) message1.get(4); //TODO TESTING ONLY
-		initCipher(WSPublicKey);//TODO TESTING ONLY
-		initDecipher(ASPrivateKey);//TODO TESTING ONLY
+		initCipher();
+		initDecipher();
+		Cipher encryptAsymCiph;
+		if(WSid==WS1_ID)
+			encryptAsymCiph = this.encryptWithWS1PublicKey;
+		else if(WSid==WS2_ID)
+			encryptAsymCiph = this.encryptWithWS2PublicKey;
+		else {
+			System.out.println("Fail at step 1 : wrong WS id");
+			return false;
+		}			
 			
 		//decrypting : 
 		byte[] decryptedRandom1;
@@ -327,25 +339,17 @@ public class AuthorisationServer implements Runnable{
 			decryptedRandom1 = (byte[]) encryptedR1.getObject(decryptWithASPrivateKey);
 			//Verification on the WebServer ID
 			if(decryptedWSid!=WSid) {
-				System.out.println("Auth.Server: Step 1 verification FAILED:");
+				System.out.println("Step 1 verification FAILED:");
 				System.out.println("WS_ID="+WSid+",encrypted(WS_ID) received="+decryptedWSid);
 				return false;
 			}
-		} catch (IllegalBlockSizeException e) {
-			System.out.println("Auth.Server: error AS connection: decrypting step1:"+e.getMessage());
-			return false;
-		} catch (BadPaddingException e) {
-			System.out.println("Auth.Server: error AS connection: decrypting step1:"+e.getMessage());
-			return false;
-		} catch (IOException e) {
-			System.out.println("Auth.Server: error AS connection: decrypting step1:"+e.getMessage());
-			return false;
-		} catch (ClassNotFoundException e) {
-			System.out.println("Auth.Server: error AS connection: decrypting step1:"+e.getMessage());
+		} catch (IllegalBlockSizeException | BadPaddingException | IOException | ClassNotFoundException e) {
+			System.out.println("Step 1: error decrypting:"+e.getMessage());
 			return false;
 		}
-		//end of STEP 1
 		System.out.println("Step 1 - ok");
+		//end of STEP 1
+		
 		//STEP 2
 		byte[] random2 = generateNonce();
 		//encrypting :
@@ -353,77 +357,73 @@ public class AuthorisationServer implements Runnable{
 		SealedObject encryptedRandom1 = null;
 		SealedObject encryptedRandom2 = null;
 		try {
-			encryptedASid = new SealedObject(this.AS_ID,encryptWithWSPublicKey);
-			encryptedRandom1 = new SealedObject(decryptedRandom1,encryptWithWSPublicKey);
-			encryptedRandom2 = new SealedObject(random2,encryptWithWSPublicKey);
-		} catch (IllegalBlockSizeException e1) {
-			System.out.println("Auth.Server: error encrypting:"+e1.getMessage());
-			return false;
-		} catch (IOException e1) {
-			System.out.println("Auth.Server: error encrypting:"+e1.getMessage());
+			encryptedASid = new SealedObject(this.AS_ID,encryptAsymCiph);
+			encryptedRandom1 = new SealedObject(decryptedRandom1,encryptAsymCiph);
+			encryptedRandom2 = new SealedObject(random2,encryptAsymCiph);
+		} catch (IllegalBlockSizeException | IOException e1) {
+			System.out.println("Step 2: error encrypting:"+e1.getMessage());
 			return false;
 		}
 		//Objects to send :
 		try {
 			ArrayList<Object> message2 = new ArrayList<Object>();
-			message2.add(encryptedASid); //0
-			message2.add(encryptedRandom1); //1
-			message2.add(encryptedRandom2);//2
+			message2.add(encryptedASid);
+			message2.add(encryptedRandom1);
+			message2.add(encryptedRandom2);
 			clientOOS.writeObject(message2);
 		} catch (IOException e) {
-			System.out.println("Auth.Server: error WS connection: sending step2:"+e.getMessage());
+			System.out.println("Step 2: error sending to WS:"+e.getMessage());
 			return false;
 		}
-		//end of STEP 2
 		System.out.println("Step 2 - ok");
+		//end of STEP 2
+		
 		//STEP 3
 		try {
 			byte[] receivedRandom2 = (byte[]) clientOIS.readObject();
 			if(!this.compare(receivedRandom2,random2)) {
-				System.out.println("Auth.Server: Step 3 verification FAILED:");
-				System.out.println("Random sent="+random2+",random received="+receivedRandom2);
+				System.out.println("Step 3 verification FAILED:");
 				return false;
 			}
 		} catch (IOException e) {
-			System.out.println("Auth.Server: error WS: receiving step3:"+e.getMessage());
+			System.out.println("Step 3: error receiving from WS:"+e.getMessage());
 			return false;
 		}
 		catch (ClassNotFoundException e) {
-			System.out.println("Auth.Server: error Cast step3:"+e.getMessage());
+			System.out.println("Step 3: cast error"+e.getMessage());
 			return false;
 		}
-		//end of STEP 3
 		System.out.println("Step 3 - ok");
+		//end of STEP 3
+		
 		//STEP 4
 		//generate Session Key and send it
 		fromAStoWSKey = generateAESKey();
 		if(fromAStoWSKey==null)
 			return false;
 		initAESCipher();
+		System.out.println("Step 4: Generated session key with success");
 		//encrypting :
 		SealedObject encryptedKey = null;
 		try {
-			encryptedKey = new SealedObject(fromAStoWSKey.getEncoded(),encryptWithWSPublicKey);
-		} catch (IllegalBlockSizeException e1) {
-			System.out.println("Auth.Server: error encrypting AES key:"+e1.getMessage());
-			return false;
-		} catch (IOException e1) {
-			System.out.println("Auth.Server: error encrypting AES key:"+e1.getMessage());
+			encryptedKey = new SealedObject(fromAStoWSKey.getEncoded(),encryptAsymCiph);
+		} catch (IllegalBlockSizeException | IOException e1) {
+			System.out.println("Step 4: error encrypting the session key:"+e1.getMessage());
 			return false;
 		}
 		//Objects to send :
 		try {
 			ArrayList<Object> message4 = new ArrayList<Object>();
-			message4.add(encryptedKey); //0
-			message4.add(encryptedRandom1); //1, already encrypted at step 2
-//			out.writeObject(message); //send the encrypted shared key + challenge 1
-			clientOOS.writeObject(message4);
+			message4.add(encryptedKey);
+			message4.add(encryptedRandom1); //already encrypted at step 2
+			clientOOS.writeObject(message4); //send the encrypted shared key + challenge 1
 		} catch (IOException e) {
-			System.out.println("Auth.Server: error WS connection: sending step4:"+e.getMessage());
+			System.out.println("Step 4: error sending to WS:"+e.getMessage());
 			return false;
 		}
-		//end of STEP 4
 		System.out.println("Step 4 - ok; Handshake was successfull");
+		//end of STEP 4
+
 		return true;
 	}
 	
@@ -451,10 +451,12 @@ public class AuthorisationServer implements Runnable{
 		}
 	}
 
-	private void initCipher(Key WSpublicKey) { //init the cipher/decipher for AS communications (RSA)
+	private void initCipher() { //init the cipher/decipher for AS communications (RSA)
 		try {
-			encryptWithWSPublicKey = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-			encryptWithWSPublicKey.init(Cipher.ENCRYPT_MODE, WSpublicKey);
+			encryptWithWS1PublicKey = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+			encryptWithWS1PublicKey.init(Cipher.ENCRYPT_MODE, this.WS1publicKey);
+			encryptWithWS2PublicKey = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+			encryptWithWS2PublicKey.init(Cipher.ENCRYPT_MODE, this.WS2publicKey);
 		} catch (NoSuchAlgorithmException e) {
 			System.out.println("Auth.Server: error RSA cipher init"+e.getMessage());
 		} catch (NoSuchPaddingException e) {
@@ -479,10 +481,10 @@ public class AuthorisationServer implements Runnable{
 		}
 	}
 
-	private void initDecipher(Key ASprivateKey) {
+	private void initDecipher() {
 		try {
 			decryptWithASPrivateKey = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-			decryptWithASPrivateKey.init(Cipher.DECRYPT_MODE, ASprivateKey);
+			decryptWithASPrivateKey.init(Cipher.DECRYPT_MODE, this.ASprivateKey);
 		} catch (NoSuchAlgorithmException e) {
 			System.out.println("Auth.Server: error RSA decipher init"+e.getMessage());
 		} catch (NoSuchPaddingException e) {
