@@ -24,7 +24,7 @@ public class DatabasePassword {
 	private String takeMainPassword()
 	{
 		//We take the file and analyze it
-		String t = this.takeFile("AS/src/php/Crypt.class.php");
+		String t = this.takeFile("src/Crypt.class.php");
 		String inf[];
 		
 		inf = t.split("const SPECIFIC_SALT \\= \"");
@@ -33,7 +33,7 @@ public class DatabasePassword {
 		
 		inf = inf[1].split("\";");
 		t = inf[0];
-		
+
 		//We have the key :).
 		this.mainKey = t;
 		return t;
@@ -127,7 +127,7 @@ public class DatabasePassword {
 	/**
 	 * Give back the corresponding password or nothing if no password
 	 */
-	private String password(String type, String salt)
+	public String password(String type, String salt)
 	{
 		Map<String, String> pass = new HashMap<String, String>();
 		pass.put("WS1", this.sha1("564zecv41zFEFEZ"+this.mainKey+"f4fl"+salt+"p^dz^l^p)��1!�!��'"));
