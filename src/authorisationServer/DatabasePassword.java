@@ -5,8 +5,6 @@ import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
 
 import org.apache.commons.codec.digest.DigestUtils;
 

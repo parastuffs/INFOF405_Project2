@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -350,6 +349,7 @@ public class AuthorisationServer implements Runnable{
 //			System.out.println("Step 1: error decrypting:"+e.getMessage());
 //			return false;
 //		}
+
 		System.out.println("Step 1 - ok");
 		//end of STEP 1
 		
