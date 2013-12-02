@@ -336,7 +336,8 @@ public class AuthorisationServer implements Runnable{
 		//decrypting : 
 		byte[] decryptedRandom1;
 		try {
-			int decryptedWSid = (Integer) encryptedWSid.getObject(decryptWithASPrivateKey);
+			//int decryptedWSid = (Integer) encryptedWSid.getObject(decryptWithASPrivateKey);
+			int decryptedWSid = (int)RSADecipher(encryptedWSid);
 			decryptedRandom1 = (byte[]) encryptedR1.getObject(decryptWithASPrivateKey);
 			//Verification on the WebServer ID
 			if(decryptedWSid!=WSid) {
@@ -346,6 +347,7 @@ public class AuthorisationServer implements Runnable{
 			}
 		} catch (IllegalBlockSizeException | BadPaddingException | IOException | ClassNotFoundException e) {
 			System.out.println("Step 1: error decrypting:"+e.getMessage());
+			e.printStackTrace();
 			return false;
 		}
 		System.out.println("Step 1 - ok");
