@@ -259,28 +259,6 @@ public class Client {
 		
 	}
 	
-	public void testAESConnection() throws UnknownHostException, IOException, IllegalBlockSizeException, InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException {
-		this.sockWS1 = new Socket("localhost", PORT_WS1);//Connection to WS
-		
-		
-		String key = "Ivenoideawhatodo";
-		byte[] raw = key.getBytes();
-		SecretKeySpec sks = new SecretKeySpec(raw, "AES");
-		Cipher ciph = Cipher.getInstance("AES/CBC/PKCS5Padding");
-		ciph.init(Cipher.ENCRYPT_MODE, sks, new IvParameterSpec(new byte[16]));
-		
-		SealedObject encryptedMessage = new SealedObject("Hello, this is dog.", ciph);
-		
-		System.out.println("Sending to server");
-		
-		ObjectOutputStream outWS = new ObjectOutputStream(sockWS1.getOutputStream());
-		outWS.writeObject(encryptedMessage);
-		outWS.flush();
-		
-		sockAS.close();
-		
-	}
-	
 	@SuppressWarnings("unchecked")
 	private void printBlackBoard() {
 		
@@ -468,32 +446,33 @@ public class Client {
 	public static void main(String[] args) {
 
 		Client c = new Client();
-		
-		System.out.println("Hello dear sir, what do you want to do on this beatiful day?");
-		System.out.println("1 - Display everything on your blackboard");
-		System.out.println("2 - Add a new message on your blackboard");
-		System.out.println("3 - Display all your passwords");
-		System.out.println("4 - Add a new password");
+		boolean running = true;
 		Scanner sc = new Scanner(System.in);
-		int uChoice = sc.nextInt();
-		if( uChoice == 1) {
-			c.printBlackBoard();
-		}
-		else if(uChoice == 2) {
-			c.writeBlackBoard();
-		}
-		else if(uChoice == 3) {
-			c.printPasswd();
-		}
-		else if(uChoice == 4) {
-			c.addPasswd();
+		while(running) {
+			System.out.println("Hello dear sir, what do you want to do on this beatiful day?");
+			System.out.println("1 - Display everything on your blackboard");
+			System.out.println("2 - Add a new message on your blackboard");
+			System.out.println("3 - Display all your passwords");
+			System.out.println("4 - Add a new password");
+			System.out.println("5 - Leave");
+			int uChoice = sc.nextInt();
+			if( uChoice == 1) {
+				c.printBlackBoard();
+			}
+			else if(uChoice == 2) {
+				c.writeBlackBoard();
+			}
+			else if(uChoice == 3) {
+				c.printPasswd();
+			}
+			else if(uChoice == 4) {
+				c.addPasswd();
+			}
+			else if(uChoice == 5) {
+				running = false;
+			}
 		}
 		sc.close();
-		
-		//Thread t = new Thread(new TestServer());
-		//t.start();
-		//Thread t1 = new Thread(new TestAESServer());
-		//t1.start();
 	}
 
 }

@@ -11,12 +11,8 @@ public class Keychain extends WebService {
 	}
 	@Override
 	protected void answerClientRequest(int requestType, String reqMsg, int clientID, ObjectOutputStream out){
-		// TODO Auto-generated method stub
-		
 	}
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		
 	}
 }

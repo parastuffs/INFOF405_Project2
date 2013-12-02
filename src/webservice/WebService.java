@@ -468,10 +468,8 @@ public abstract class WebService implements Runnable {
 				clientSocket.close();
 				System.out.println("WS: connection with the client closed");
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (ClassNotFoundException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
