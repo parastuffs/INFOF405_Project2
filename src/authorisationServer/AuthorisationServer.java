@@ -76,13 +76,13 @@ public class AuthorisationServer implements Runnable{
 	
 	private final int CLIENTID = 10;
 
-	private ObjectOutputStream clientOOS;
-	private ObjectInputStream clientOIS;
+	private ObjectOutputStream clientOOS = null;
+	private ObjectInputStream clientOIS=null;
 	
 	public AuthorisationServer(Socket socket) {
 
 		this.clientSocket = socket;
-		
+		this.initObjectIOStream();
 		//init Nonces
 		nonces = new ArrayList<byte[]>();
 		
@@ -102,7 +102,25 @@ public class AuthorisationServer implements Runnable{
 //		} 
 	}
 
-	
+	private void initObjectIOStream() {
+		if(this.clientOOS == null) {
+			try {
+				this.clientOOS = new ObjectOutputStream(clientSocket.getOutputStream());
+				System.out.println("AS:initialised clientOOS ok");
+				this.clientOOS.flush();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		if(this.clientOIS == null) {
+			try {
+				this.clientOIS = new ObjectInputStream(clientSocket.getInputStream());
+				System.out.println("AS:initialised clientOIS ok");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 	/**
 	 * Method loading the private keys from the .pem file.
 	 * @param filename .pem file containing the key
@@ -162,7 +180,7 @@ public class AuthorisationServer implements Runnable{
 
 	private boolean handshakeWithClient(ArrayList<Object> request, ObjectInputStream ois) throws IOException, ClassNotFoundException {
 		//STEP 1
-		System.out.println("Beginning of setp 1");
+		System.out.println("Beginning of step 1");
 		//receiving objects :
 		int requestClientID;//Client ID encapsulated in the request
 		int requestWSID;
@@ -224,7 +242,8 @@ public class AuthorisationServer implements Runnable{
 		//STEP 3
 		//
 		//Note: we can't open multiple ObjectInputStream on a socket.
-		byte[] receivedR4 = (byte[]) ois.readObject();
+//		byte[] receivedR4 = (byte[]) ois.readObject();
+		byte[] receivedR4 = (byte[]) this.clientOIS.readObject();
 		if(!Arrays.equals(receivedR4, r4)) {
 			System.out.println("Auth.Server: Step 3 verification FAILED:");
 			//System.out.println("Random sent="+random2+",random received="+receivedRandom2);
@@ -288,35 +307,37 @@ public class AuthorisationServer implements Runnable{
 	}
 
 	//NEEDHAM-SCHROEDER protocol (binome du WebService connectToAuthServer())
-	private boolean handshakeWithWS() {
+	private boolean handshakeWithWS(ArrayList<Object> request) {
+		System.out.println("Starting handshake with WS");
 		//STEP 1
 		//receiving objects :
 		int WSid;
 		SealedObject encryptedWSid, encryptedR1;
-		try {
+//		try {
 //			ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
-			ArrayList<?> message = (ArrayList<?>) clientOIS.readObject();
-			WSid = (Integer) message.get(0);
-			encryptedWSid = (SealedObject) message.get(1);
-			encryptedR1 = (SealedObject) message.get(2);
-			Key ASPrivateKey = (Key) message.get(3); //TODO TESTING ONLY
-			Key WSPublicKey = (Key) message.get(4); //TODO TESTING ONLY
+//			ArrayList<?> message = (ArrayList<?>) clientOIS.readObject();
+			ArrayList<?> message1 = request;
+			WSid = (Integer) message1.get(0);
+			encryptedWSid = (SealedObject) message1.get(1);
+			encryptedR1 = (SealedObject) message1.get(2);
+			Key ASPrivateKey = (Key) message1.get(3); //TODO TESTING ONLY
+			Key WSPublicKey = (Key) message1.get(4); //TODO TESTING ONLY
 			initCipher(WSPublicKey);//TODO TESTING ONLY
 			initDecipher(ASPrivateKey);//TODO TESTING ONLY
 
 			//			in.close();
-		} catch (IOException e) {
-			System.out.println("Auth.Server: error WS: receiving step1:"+e.getMessage());
-			return false;
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-			return false;
-		}
+//		} catch (IOException e) {
+//			System.out.println("Auth.Server: error WS: receiving step1:"+e.getMessage());
+//			return false;
+//		} catch (ClassNotFoundException e) {
+//			e.printStackTrace();
+//			return false;
+//		}
 		//decrypting : 
-		long decryptedRandom1;
+		byte[] decryptedRandom1;
 		try {
 			int decryptedWSid = (Integer) encryptedWSid.getObject(decryptWithASPrivateKey);
-			decryptedRandom1 = (Long) encryptedR1.getObject(decryptWithASPrivateKey);
+			decryptedRandom1 = (byte[]) encryptedR1.getObject(decryptWithASPrivateKey);
 			//Verification on the WebServer ID
 			if(decryptedWSid!=WSid) {
 				System.out.println("Auth.Server: Step 1 verification FAILED:");
@@ -337,7 +358,7 @@ public class AuthorisationServer implements Runnable{
 			return false;
 		}
 		//end of STEP 1
-
+		System.out.println("Step 1 - ok");
 		//STEP 2
 		byte[] random2 = generateNonce();
 		//encrypting :
@@ -358,12 +379,12 @@ public class AuthorisationServer implements Runnable{
 		//Objects to send :
 		try {
 //			ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
-			ArrayList<Object> message = new ArrayList<Object>();
-			message.add(encryptedASid); //0
-			message.add(encryptedRandom1); //1
-			message.add(encryptedRandom2);//2
+			ArrayList<Object> message2 = new ArrayList<Object>();
+			message2.add(encryptedASid); //0
+			message2.add(encryptedRandom1); //1
+			message2.add(encryptedRandom2);//2
 //			out.writeObject(message); //send the encrypted AS_ID + challenge 1 + challenge2
-			clientOOS.writeObject(message);
+			clientOOS.writeObject(message2);
 			//			out.flush();
 			//			out.close();
 		} catch (IOException e) {
@@ -371,12 +392,12 @@ public class AuthorisationServer implements Runnable{
 			return false;
 		}
 		//end of STEP 2
-
+		System.out.println("Step 2 - ok");
 		//STEP 3
 		try {
 //			ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
 			byte[] receivedRandom2 = (byte[]) clientOIS.readObject();
-			if(receivedRandom2 != random2) {
+			if(!this.compare(receivedRandom2,random2)) {
 				System.out.println("Auth.Server: Step 3 verification FAILED:");
 				System.out.println("Random sent="+random2+",random received="+receivedRandom2);
 				return false;
@@ -391,7 +412,7 @@ public class AuthorisationServer implements Runnable{
 			return false;
 		}
 		//end of STEP 3
-
+		System.out.println("Step 3 - ok");
 		//STEP 4
 		//generate Session Key and send it
 		AESKeyWithWS = generateAESKey();
@@ -412,11 +433,11 @@ public class AuthorisationServer implements Runnable{
 		//Objects to send :
 		try {
 //			ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
-			ArrayList<Object> message = new ArrayList<Object>();
-			message.add(encryptedKey); //0
-			message.add(encryptedRandom1); //1, already encrypted at step 2
+			ArrayList<Object> message4 = new ArrayList<Object>();
+			message4.add(encryptedKey); //0
+			message4.add(encryptedRandom1); //1, already encrypted at step 2
 //			out.writeObject(message); //send the encrypted shared key + challenge 1
-			clientOOS.writeObject(message);
+			clientOOS.writeObject(message4);
 			//					out.flush();
 			//					out.close();
 		} catch (IOException e) {
@@ -424,10 +445,24 @@ public class AuthorisationServer implements Runnable{
 			return false;
 		}
 		//end of STEP 4
-
+		System.out.println("Step 4 - ok; Handshake was successfull");
 		return true;
 	}
-
+	
+	private boolean compare(byte[] a, byte[] b) {
+		if(a.length != b.length) {
+			System.out.println("compare A B: length diff"+a.length+"<->"+b.length);
+			return false;
+		}
+		boolean res = true;
+		for(int i=0;i<a.length;i++) {
+			if(a[i]!=b[i])
+				res = false;
+		}
+		System.out.println("comparaison:"+res);
+		return res;
+	}
+	
 	private SecretKey generateAESKey() { //TODO TESTING... comment en pratique?
 		try {
 			KeyGenerator kg = KeyGenerator.getInstance("AES");
@@ -498,26 +533,7 @@ public class AuthorisationServer implements Runnable{
 		//System.out.println("Auth.Server : Nonce generated="+result.longValue());
 		return nonce;
 	}
-	
-	private void initWSOutputStream() { //TODO rename
-		if(clientOOS == null) {
-			try {
-				clientOOS = new ObjectOutputStream(clientSocket.getOutputStream());
-				System.out.println("AS:initialised clientOOS ok");
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		if(clientOIS == null) {
-			try {
-				clientOIS = new ObjectInputStream(clientSocket.getInputStream());
-				System.out.println("AS:initialised clientOIS ok");
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-//		return clientOOS;
-	}
+
 
 	
 	/**
@@ -591,9 +607,10 @@ public class AuthorisationServer implements Runnable{
 				//clientSocket = serverSocket.accept();
 				//System.out.println("Auth.Server: New client connected: "+clientSocket.getInetAddress().toString());
 				
-				ObjectInputStream ois = new ObjectInputStream(clientSocket.getInputStream()); 
+//				ObjectInputStream ois = new ObjectInputStream(clientSocket.getInputStream()); 
 				ArrayList<Object> distantObjects = new ArrayList<Object>();
-				distantObjects = (ArrayList<Object>)ois.readObject();
+//				distantObjects = (ArrayList<Object>) ois.readObject();
+				distantObjects = (ArrayList<Object>) this.clientOIS.readObject();
 				
 				int acceptedID = (int)distantObjects.get(0);
 				if(acceptedID == this.CLIENT_ID) {//We have a user
@@ -601,15 +618,16 @@ public class AuthorisationServer implements Runnable{
 					//ObjectOutputStream oos = new ObjectOutputStream(clientSocket.getOutputStream());
 					//Thread tClient = new Thread(new ClientHandler(clientSocket, ois));
 					//tClient.start();
-					handshakeWithClient(distantObjects, ois);
+//					handshakeWithClient(distantObjects, ois);
+					handshakeWithClient(distantObjects, this.clientOIS);
 				}
 				else if(acceptedID == this.WS1_ID) {//First WS
 					System.out.println("Accepting WS1");
-					handshakeWithWS();
+					handshakeWithWS(distantObjects);
 				}
 				else if(acceptedID == this.WS2_ID) {//Second WS
 					System.out.println("Accepting WS2");
-					handshakeWithWS();
+					handshakeWithWS(distantObjects);
 				}
 				//clientSocket.close();
 			} catch (IOException | ClassNotFoundException e) {

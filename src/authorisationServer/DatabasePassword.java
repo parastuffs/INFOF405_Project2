@@ -1,3 +1,5 @@
+package authorisationServer;
+
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.HashMap;
@@ -92,7 +94,7 @@ public class DatabasePassword {
 		}
 		else
 		{//We decrypt the text
-			return "";//TODO             IMPORTANT!!!!! Decryptage rijndael-128 mode cfb à mettre en place (si probleme de mode ou quoi, je peux encore le changer)
+			return "";//TODO             IMPORTANT!!!!! Decryptage rijndael-128 mode cfb ï¿½ mettre en place (si probleme de mode ou quoi, je peux encore le changer)
 		}
 	}
 	
@@ -118,7 +120,7 @@ public class DatabasePassword {
 		else
 		{//We crypt the text
 			
-            return "";//TODO             IMPORTANT!!!!! Cryptage rijndael-128 mode cfb à mettre en place (si probleme de mode ou quoi, je peux encore le changer)
+            return "";//TODO             IMPORTANT!!!!! Cryptage rijndael-128 mode cfb ï¿½ mettre en place (si probleme de mode ou quoi, je peux encore le changer)
 		}
 	}
 	

@@ -34,7 +34,7 @@ public abstract class WebService implements Runnable {
 	//AS informations
 	protected final static String ASaddress = "localhost";
 	protected final static int ASport = 42000;
-	protected final static int ASid = 42;
+	protected final static int ASid = 0;
 	protected static Key ASpublicKey; //TODO recuperer la cle publique depuis le .pem
 	protected static Key ASprivateKey;//TODO TESTING ONLY
 	
@@ -58,7 +58,7 @@ public abstract class WebService implements Runnable {
 	protected List<Key> clientKeyList;
 	protected List<Long> clientPeriodList;
 
-	private static List<Long> nonces; //list of random "nonces"
+	private static List<byte[]> nonces; //list of random "nonces"
 
 	/**
 	 * Constructor : initialise les variables, puis essaie de se connecter à l'AS, et si ça marche, 
@@ -68,7 +68,7 @@ public abstract class WebService implements Runnable {
 	 */
 	protected WebService(int port, int ID) {
 		//init variables
-		nonces = new ArrayList<Long>();
+		nonces = new ArrayList<byte[]>();
 		this.clientIDList = new ArrayList<Integer>();
 		this.clientKeyList = new ArrayList<Key>();
 		this.clientPeriodList = new ArrayList<Long>();
@@ -139,7 +139,7 @@ public abstract class WebService implements Runnable {
 		SocketFactory ASfactory = SocketFactory.getDefault();
 		try {
 			this.ASsocket = ASfactory.createSocket(ASaddress,ASport);
-			this.initASIOStream();
+			this.initASObjectIOStream();
 		} catch (UnknownHostException e) {
 			System.out.println("WEBSERVICE: error connecting to AS:"+e.getMessage());
 			return false;
@@ -148,9 +148,10 @@ public abstract class WebService implements Runnable {
 			return false;
 		}
 
+		System.out.println("Starting handshake with AS");
 		//Needham-Schroeder protocol between WS and AS
 		//STEP 1:
-		long random1 = generateNonce();
+		byte[] random1 = generateNonce();
 		//encrypting :
 		SealedObject encryptedWSid =null;
 		SealedObject encryptedNonce =null;
@@ -175,7 +176,7 @@ public abstract class WebService implements Runnable {
 			message.add(this.WSpublicKey); //4 TODO TESTING ONLY
 //			out.writeObject(message); //send the ID and the encrypted ID+challenge
 			this.ASSocketOOS.writeObject(message);
-			this.ASSocketOOS.flush();
+//			this.ASSocketOOS.flush();
 //			out.flush();
 //			out.close();
 		} catch (IOException e) {
@@ -183,7 +184,7 @@ public abstract class WebService implements Runnable {
 			return false;
 		}
 		//end of STEP 1
-
+		System.out.println("Step1 ok");
 		//STEP 2:
 		//receiving objects :
 		SealedObject encryptedASid, encryptedR1, encryptedR2;
@@ -203,12 +204,12 @@ public abstract class WebService implements Runnable {
 			return false;
 		}
 		//decrypting : 
-		long decryptedRandom2;
+		byte[] decryptedRandom2;
 		try {
 			int decryptedASid = (Integer) encryptedASid.getObject(this.decryptWithWSPrivateKey);
-			long decryptedRandom1 = (Long) encryptedR1.getObject(this.decryptWithWSPrivateKey);
-			decryptedRandom2 = (Long) encryptedR2.getObject(this.decryptWithWSPrivateKey);
-			if(decryptedRandom1!=random1 || decryptedASid!=ASid) {
+			byte[] decryptedRandom1 = (byte[]) encryptedR1.getObject(this.decryptWithWSPrivateKey);
+			decryptedRandom2 = (byte[]) encryptedR2.getObject(this.decryptWithWSPrivateKey);
+			if(!this.compare(decryptedRandom1,random1) || decryptedASid!=ASid) {
 				System.out.println("WEBSERVICE: Step 2 verification FAILED:");
 				System.out.println("Random sent="+random1+",random received="+decryptedRandom1);
 				System.out.println("AS_ID="+ASid+",AS_ID received="+decryptedASid);
@@ -228,7 +229,7 @@ public abstract class WebService implements Runnable {
 			return false;
 		}
 		//end of STEP 2
-		
+		System.out.println("step2 ok");
 		//STEP 3
 		//Send random2 back :
 		try {
@@ -242,7 +243,7 @@ public abstract class WebService implements Runnable {
 			return false;
 		}
 		//end of STEP 3
-		
+		System.out.println("step3 ok");
 		//STEP 4
 		//receiving objects :
 		SealedObject encryptedKey, encryptedR1bis;
@@ -266,8 +267,8 @@ public abstract class WebService implements Runnable {
 			byte[] rawKey = (byte[]) encryptedKey.getObject(this.decryptWithWSPrivateKey);
 			decryptedKey = new SecretKeySpec(rawKey,"AES");
 //			decryptedKey = (Key) encryptedKey.getObject(this.decryptWithWSPrivateKey);
-			long decryptedRandom1bis = (Long) encryptedR1bis.getObject(this.decryptWithWSPrivateKey);
-			if(decryptedRandom1bis != random1) {
+			byte[] decryptedRandom1bis = (byte[]) encryptedR1bis.getObject(this.decryptWithWSPrivateKey);
+			if(!this.compare(decryptedRandom1bis,random1)) {
 				System.out.println("WEBSERVICE: Step 4 verification FAILED:");
 				System.out.println("Random sent="+random1+",random received="+decryptedRandom1bis);
 				return false;
@@ -289,8 +290,22 @@ public abstract class WebService implements Runnable {
 		this.sharedWithASKey = decryptedKey;
 		this.decryptWithASSharedKey = this.getCipherOfSharedKey(this.sharedWithASKey,DECRYPT);
 		//end of STEP 4
-
+		System.out.println("step4 ok; handshake successful");
 		return true;
+	}
+	
+	private boolean compare(byte[] a, byte[] b) {
+		if(a.length != b.length) {
+			System.out.println("compare A B: length diff"+a.length+"<->"+b.length);
+			return false;
+		}
+		boolean res = true;
+		for(int i=0;i<a.length;i++) {
+			if(a[i]!=b[i])
+				res = false;
+		}
+		System.out.println("comparaison:"+res);
+		return res;
 	}
 
 	/**
@@ -330,7 +345,7 @@ public abstract class WebService implements Runnable {
 	/** 
 	 * Init input/output stream (object) for the AS connection
 	 */
-	private void initASIOStream() {
+	private void initASObjectIOStream() {
 //		if(ASSocketOOS == null) {
 		ASSocketOOS = null;
 			try {
@@ -343,7 +358,7 @@ public abstract class WebService implements Runnable {
 //		}
 			ASSocketOIS = null;
 //		if(ASSocketOIS == null) {
-			System.out.println("In between");
+//			System.out.println("In between");
 			try {
 				this.ASSocketOIS = new ObjectInputStream(this.ASsocket.getInputStream());
 				System.out.println("WS:initialised ASSocketOIS ok");
@@ -359,28 +374,33 @@ public abstract class WebService implements Runnable {
 	 * random nonce generator
 	 * @return
 	 */
-	private static long generateNonce() { //TODO change long -> byte[16]
-		Random generator = new Random();
-		Long result = generator.nextLong();
-		while(nonces.contains(result)) {
-			result = generator.nextLong();
-			System.out.println("WebServer : SHOULD NOT BE HERE... ELSE, CRAPPY RANDOM GENERATOR");
+	private static byte[] generateNonce() { //TODO change long -> byte[16]
+//		Random generator = new Random();
+//		Long result = generator.nextLong();
+//		while(nonces.contains(result)) {
+//			result = generator.nextLong();
+//			System.out.println("WebServer : SHOULD NOT BE HERE... ELSE, CRAPPY RANDOM GENERATOR");
+		//		}
+		//		System.out.println("WebServer : Nonce generated="+result.longValue());
+		byte[] res = new byte[16];
+		Random rand=null;
+		try {
+			rand = SecureRandom.getInstance("SHA1PRNG");
+			rand.nextBytes(res);
+			while(nonces.contains(res)) {
+				rand.nextBytes(res);
+				System.out.println("WS: SHOULD NOT BE HERE"); //DEBUG purpose
+			}
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-//		System.out.println("WebServer : Nonce generated="+result.longValue());
-//		byte[] res = new byte[16];
-//		Random rand=null;
-//		try {
-//			rand = SecureRandom.getInstance("SHA1PRNG");
-//		} catch (NoSuchAlgorithmException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//		rand.nextBytes(res);
+		
 //		System.out.print("WebServer : Nonce generated=");
 //		for(int i=0;i<16;i++)
 //			System.out.printf("0x%02X ", res[i]);
-//		return result;
-		return result.longValue();
+		return res;
+//		return result.longValue();
 	}
 
 	/**
