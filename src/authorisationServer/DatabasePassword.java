@@ -5,6 +5,9 @@ import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+
 import org.apache.commons.codec.digest.DigestUtils;
 
 
@@ -94,7 +97,24 @@ public class DatabasePassword {
 		}
 		else
 		{//We decrypt the text
-			return "";//TODO             IMPORTANT!!!!! Decryptage rijndael-128 mode cfb � mettre en place (si probleme de mode ou quoi, je peux encore le changer)
+			//4 lignes de code :
+//			Cipher aes = Cipher.getInstance("AES/CBC/PKCS5Padding"); //defini que c'est AES en mode CBC
+//			aes.init(Cipher.DECRYPT_MODE, CLEF, new IvParameterSpec(new byte[16])); //voir commentaire en dessous
+//			String cleartext = new String(aes.doFinal(ciphertext));
+//			return cleartext;
+			/*
+			dans aes.init() : il faut la clef AES (un objet de type Key) pour dechiffrer
+			et new IvParameter = vecteur d'initialisation (faut utiliser le meme pour encrypter/decrypter)
+			par ex. un array de 16 bytes a zero
+			derniere ligne : ciphertext = texte a dechiffrer, c'est le "text" du parametre ici?
+			cleartext etant le texte clair, dechiffre.
+			il reste encore le salt que je sais pas où il doit se mettre, ni a quoi sert le parametre "type"
+
+			si tu veux generer une cle, tu as la fonction implementee generateAESKey() 
+			dans la classe AuthorisationServer.java 
+			*/
+			return "";//TODO a verifier
+			//IMPORTANT!!!!! Decryptage rijndael-128 mode cfb a mettre en place 
 		}
 	}
 	
@@ -119,7 +139,19 @@ public class DatabasePassword {
 		}
 		else
 		{//We crypt the text
+			//4 lignes de code :
+//			Cipher aes = Cipher.getInstance("AES/CBC/PKCS5Padding"); //defini que c'est AES en mode CBC
+//			aes.init(Cipher.ENCRYPT_MODE, CLEF, new IvParameterSpec(new byte[16])); //voir commentaire en dessous
+//			byte[] ciphertext = aes.doFinal("my_cleartext".getBytes());
+//			return new String(ciphertext, "UTF-8"); //a tester; bete conversion byte[]->string
 			
+			//dans aes.init() : il faut la clef AES (un objet de type Key) pour chiffrer
+			//et new IvParameter = vecteur d'initialisation (faut utiliser le meme pour encrypter/decrypter)
+			//par ex. un array de 16 bytes a zero
+			//derniere ligne : my_cleartext est le texte clair a chiffrer, c'est "text" (parametre)?
+			
+			//il reste encore le salt que je sais pas où il doit se mettre, ni a quoi sert le parametre "type"
+		
             return "";//TODO             IMPORTANT!!!!! Cryptage rijndael-128 mode cfb � mettre en place (si probleme de mode ou quoi, je peux encore le changer)
 		}
 	}
