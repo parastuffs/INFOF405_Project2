@@ -78,8 +78,10 @@ public class AuthorisationServer implements Runnable{
 	private ObjectOutputStream clientOOS;
 	private ObjectInputStream clientOIS;
 	
-	public AuthorisationServer() {
+	public AuthorisationServer(Socket socket) {
 
+		this.clientSocket = socket;
+		
 		//init Nonces
 		nonces = new ArrayList<byte[]>();
 		
@@ -91,12 +93,12 @@ public class AuthorisationServer implements Runnable{
 		this.ASprivateKey = loadPrivateKey(this.PRIVATEKEYFILE_AS, "RSA");
 		
 		//initiate Socket
-		ServerSocketFactory servFactory = ServerSocketFactory.getDefault();
-		try {
-			serverSocket = servFactory.createServerSocket(PORT);
-		} catch (IOException e) {
-			System.out.println("Auth.Server: error creating server socket:"+e.getMessage());
-		} 
+//		ServerSocketFactory servFactory = ServerSocketFactory.getDefault();
+//		try {
+//			serverSocket = servFactory.createServerSocket(PORT);
+//		} catch (IOException e) {
+//			System.out.println("Auth.Server: error creating server socket:"+e.getMessage());
+//		} 
 	}
 
 	
@@ -582,38 +584,38 @@ public class AuthorisationServer implements Runnable{
 	@Override
 	public void run() {
 		
-		while(true) {
-			boolean clientConnected = false;
+		//while(true) {
 			try {
-				System.out.println("Waiting for a new connection.");
-				clientSocket = serverSocket.accept();
-				System.out.println("Auth.Server: New client connected: "+clientSocket.getInetAddress().toString());
-				clientConnected = true;
-				if(clientConnected) {
-					ObjectInputStream ois = new ObjectInputStream(clientSocket.getInputStream()); 
-					ArrayList<Object> distantObjects = new ArrayList<Object>();
-					distantObjects = (ArrayList<Object>)ois.readObject();
-					
-					int acceptedID = (int)distantObjects.get(0);
-					if(acceptedID == this.CLIENT_ID) {//We have a user
-						System.out.println("We have a client, here!");
-						handshakeWithClient(distantObjects, ois);
-					}
-					else if(acceptedID == this.WS1_ID) {//First WS
-						System.out.println("Accepting WS1");
-						handshakeWithWS();
-					}
-					else if(acceptedID == this.WS2_ID) {//Second WS
-						System.out.println("Accepting WS2");
-						handshakeWithWS();
-					}
-					clientSocket.close();
+				//System.out.println("Waiting for a new connection.");
+				//clientSocket = serverSocket.accept();
+				//System.out.println("Auth.Server: New client connected: "+clientSocket.getInetAddress().toString());
+				
+				ObjectInputStream ois = new ObjectInputStream(clientSocket.getInputStream()); 
+				ArrayList<Object> distantObjects = new ArrayList<Object>();
+				distantObjects = (ArrayList<Object>)ois.readObject();
+				
+				int acceptedID = (int)distantObjects.get(0);
+				if(acceptedID == this.CLIENT_ID) {//We have a user
+					System.out.println("We have a client, here!");
+					//ObjectOutputStream oos = new ObjectOutputStream(clientSocket.getOutputStream());
+					//Thread tClient = new Thread(new ClientHandler(clientSocket, ois));
+					//tClient.start();
+					handshakeWithClient(distantObjects, ois);
 				}
+				else if(acceptedID == this.WS1_ID) {//First WS
+					System.out.println("Accepting WS1");
+					handshakeWithWS();
+				}
+				else if(acceptedID == this.WS2_ID) {//Second WS
+					System.out.println("Accepting WS2");
+					handshakeWithWS();
+				}
+				//clientSocket.close();
 			} catch (IOException | ClassNotFoundException e) {
 				System.out.println("Auth.Server: error accepting WS:"+e.getMessage());
 				e.printStackTrace();
 			}
-		}
+		//}
 		
 	}
 }

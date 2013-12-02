@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -165,7 +166,6 @@ public class Client {
 		this.r3 = new byte[16];
 		Random rand = SecureRandom.getInstance("SHA1PRNG");
 		rand.nextBytes(r3);
-        System.out.println("r3: "+new String(r3, "UTF-8"));
 		
 		//Encryption
 		Cipher ciph = Cipher.getInstance("RSA");//RSA encryption
@@ -329,7 +329,7 @@ public class Client {
 				//Receives the messages
 				ObjectInputStream ois = new ObjectInputStream(this.sockAS.getInputStream());
 		        ArrayList<String> blackBoardMes = new ArrayList<String>();
-		        blackBoardMes = (ArrayList<String>)AESDecipher(ois.readObject(), key);
+		        blackBoardMes = (ArrayList<String>)AESDecipher(ois.readObject());
 				
 				this.sockWS1.close();
 				
@@ -368,31 +368,24 @@ public class Client {
 				this.sockWS1 = new Socket("localhost", PORT_WS1);
 				ArrayList<Object> request = new ArrayList<Object>();
 				
-				//
-				//AES construction
-				//
-				String key = "Ivenoideawhatodo";
-				byte[] raw = key.getBytes();
-				SecretKeySpec sks = new SecretKeySpec(raw, "AES");
-				Cipher ciph = Cipher.getInstance("AES/CBC/PKCS5Padding");
-				ciph.init(Cipher.ENCRYPT_MODE, sks, new IvParameterSpec(new byte[16]));
-	
-				SealedObject encryptedRequestType = new SealedObject(WS1_WRITE, ciph);	
-				SealedObject encryptedMessage = new SealedObject(message, ciph);
+				//Encryption
+				SealedObject encryptedRequestType = AESCipher(WS1_WRITE);	
+				SealedObject encryptedMessage = AESCipher(message);
 				
 				//Adds the elements to the list
-				request.add(CLIENT_ID);
-				request.add(encryptedRequestType);
-				request.add(encryptedMessage);
+				request.add(CLIENT_ID);//0
+				request.add(encryptedRequestType);//1
+				request.add(encryptedMessage);//2
 
 				//Sends the object
 				ObjectOutputStream outWS = new ObjectOutputStream(sockWS1.getOutputStream());
 				outWS.writeObject(request);
 				outWS.flush();
+				System.out.println("Message sent. Awaiting the web service answer...");
 				
 				//Receives the messages
-				ObjectInputStream ois = new ObjectInputStream(this.sockAS.getInputStream());
-		        if((boolean)AESDecipher(ois.readObject(), key)) {
+				ObjectInputStream ois = new ObjectInputStream(this.sockWS1.getInputStream());
+		        if((boolean)AESDecipher(ois.readObject())) {
 		        	System.out.println("Writing successful.");
 		        }
 		        else {
@@ -408,7 +401,7 @@ public class Client {
 			}
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
 				| IllegalBlockSizeException | ClassNotFoundException
-				| IOException | InvalidAlgorithmParameterException e) {
+				| IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -444,18 +437,29 @@ public class Client {
 		}
 	}
 	
-	private Object AESDecipher(Object ciphered, String key) {
+	private Object AESDecipher(Object ciphered) {
         try {
-        	byte[] raw = key.getBytes();
-            SecretKeySpec sks = new SecretKeySpec(raw, "AES");
             String algo = ((SealedObject) ciphered).getAlgorithm();//Get the algorithm
             Cipher ciph = Cipher.getInstance(algo);//Get the cipher
-            ciph.init(Cipher.DECRYPT_MODE, sks, new IvParameterSpec(new byte[16]));//Decrypt
+            ciph.init(Cipher.DECRYPT_MODE, this.sharedKeyWS1, new IvParameterSpec(new byte[16]));//Decrypt
 			return ((SealedObject)ciphered).getObject(ciph);
 		} catch (ClassNotFoundException | IllegalBlockSizeException
 				| BadPaddingException | IOException | InvalidKeyException
 				| InvalidAlgorithmParameterException | NoSuchAlgorithmException
 				| NoSuchPaddingException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	private SealedObject AESCipher(Serializable toBeCiphered) {
+		try {
+			Cipher ciph = Cipher.getInstance("AES/CBC/PKCS5Padding");
+			ciph.init(Cipher.ENCRYPT_MODE, this.sharedKeyWS1, new IvParameterSpec(new byte[16]));
+			return new SealedObject(toBeCiphered, ciph);
+		} catch (InvalidKeyException | InvalidAlgorithmParameterException 
+				| NoSuchAlgorithmException | NoSuchPaddingException 
+				| IllegalBlockSizeException | IOException e) {
 			e.printStackTrace();
 			return null;
 		}

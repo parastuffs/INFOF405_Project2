@@ -41,6 +41,7 @@ public class Blackboard extends WebService {
 				}
 			} else if(requestType==WRITE && !reqMsg.isEmpty()) {
 //				BlackboardDB.getInstance().writeOnBoard(clientID, "Rainbow poney");//TESTING PURPOSE
+				System.out.println("Message sent by the client: "+reqMsg);
 				BlackboardDB.getInstance().writeOnBoard(clientID, reqMsg);
 			}
 		}
