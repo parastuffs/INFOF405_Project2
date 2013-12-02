@@ -25,7 +25,6 @@ import java.util.ListIterator;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Timer;
-import java.util.TimerTask;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -41,11 +40,14 @@ public class Client {
 	
 	private Socket sockAS;
 	private Socket sockWS1;
+	private Socket sockWS2;
 	private final int PORT_AS = 42000;
 	private final int PORT_WS1 = 2013;
+	private final int PORT_WS2 = 2014;
 	private final int WS1_PRINT = 0;
 	private final int WS1_WRITE = 1;
-	private byte[] r1;
+	private final int WS2_PRINT = 0;
+	private final int WS2_WRITE = 1;
 	private byte[] r3;
 	private byte[] r4;
 	private final int CLIENT_ID = 10;
@@ -61,6 +63,8 @@ public class Client {
 	//private SecretKey sharedKeyWS1;
 	private Key sharedKeyWS1;
 	private int cryptoperiodWS1;
+	private int cryptoperiodWS2;
+	private Key sharedKeyWS2;
 	
 	public Client() {
 
@@ -129,7 +133,7 @@ public class Client {
 	}
 	
 	/**
-	 * Requests access to the blackboard at the Authorisation Server.
+	 * Requests access to the webservice at the Authorisation Server.
 	 * There are three passes:
 	 * 				<ul><li>Client announces himself to AS.</li>
 	 * 					<li>AS responds with a challenge.</li>
@@ -144,7 +148,7 @@ public class Client {
 	 * @throws ClassNotFoundException
 	 */
 	@SuppressWarnings("unchecked")
-	public boolean requestAccessBlackBoard() throws UnknownHostException, IOException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, ClassNotFoundException {
+	public boolean requestWSAccess(int WSid) throws UnknownHostException, IOException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, ClassNotFoundException {
 		this.sockAS = new Socket("localhost", PORT_AS);//Connection to AS
 		
 		//
@@ -159,7 +163,7 @@ public class Client {
 		ciph.init(Cipher.ENCRYPT_MODE, this.ASPublicKey);
 		SealedObject encryptedClientID = new SealedObject(CLIENT_ID, ciph);
 		SealedObject encryptedNonce = new SealedObject(this.r3, ciph);
-		SealedObject encryptedWSID = new SealedObject(this.WS1_ID, ciph);
+		SealedObject encryptedWSID = new SealedObject(WSid, ciph);
 
 		/**
 		 * Array of all the elements to be sent to the distant server:
@@ -167,7 +171,7 @@ public class Client {
 		 */
 		ArrayList<Object> message = new ArrayList<Object>();//List of the objects to send to AS
 		message.add(CLIENT_ID);//0
-		message.add(this.WS1_ID);//1
+		message.add(WSid);//1
 		message.add(encryptedClientID);//2
 		message.add(encryptedWSID);//3
 		message.add(encryptedNonce);//4
@@ -196,7 +200,7 @@ public class Client {
         
         
         //Time to check that everything sent by AS is OK:
-        if(idASchallenge == this.AS_ID && idWSchallenge == this.WS1_ID && Arrays.equals(r3Challenge,this.r3)) {
+        if(idASchallenge == this.AS_ID && idWSchallenge == WSid && Arrays.equals(r3Challenge,this.r3)) {
         	
         	//
         	//Third, sends the challenge, clear, to AS.
@@ -219,14 +223,27 @@ public class Client {
     		SealedObject encryptedAESKey = (SealedObject)answer.get(0);
 			byte[] AESKey = new byte[16];
     		AESKey = (byte[])RSADecipher(encryptedAESKey);
-    		this.sharedKeyWS1 = new SecretKeySpec(AESKey, 0, 16, "AES");    		
     		
-    		this.cryptoperiodWS1 = (int)RSADecipher(answer.get(1));
+    		if(WSid == this.WS1_ID) {
+	    		this.sharedKeyWS1 = new SecretKeySpec(AESKey, 0, 16, "AES");    		
+	    		
+	    		this.cryptoperiodWS1 = (int)RSADecipher(answer.get(1));
+	    		
+	    		//Program the suicide of the key
+	    		TimerKey  timer = new TimerKey(this);
+	    		Timer t = new Timer();
+	    		t.schedule(timer, cryptoperiodWS1*1000);
+    		}
+    		else if(WSid == this.WS2_ID) {
+    			this.sharedKeyWS2 = new SecretKeySpec(AESKey, 0, 16, "AES");    		
     		
-    		//Program the suicide of the key
-    		TimerKey  timer = new TimerKey(this);
-    		Timer t = new Timer();
-    		t.schedule(timer, cryptoperiodWS1*1000);
+	    		this.cryptoperiodWS2 = (int)RSADecipher(answer.get(1));
+	    		
+	    		//Program the suicide of the key
+	    		TimerKey  timer = new TimerKey(this);
+	    		Timer t = new Timer();
+	    		t.schedule(timer, this.cryptoperiodWS2*1000);
+    		}
     		
         	r3Challenge = (byte[])RSADecipher(answer.get(2));
         	
@@ -250,7 +267,7 @@ public class Client {
         else {
         	System.out.println("Something went wrong during the verification:");            	
         	System.out.println("idASchallenge="+idASchallenge+", expecting "+this.AS_ID);
-        	System.out.println("idWSchallenge="+idWSchallenge+", expecting "+this.WS1_ID);
+        	System.out.println("idWSchallenge="+idWSchallenge+", expecting "+WSid);
         	System.out.println("r3Challenge="+new String(r3Challenge,"UTF-8")+", expecting "+new String(this.r3,"UTF-8"));
         	closeConnectionAS();
         	return false;
@@ -265,22 +282,13 @@ public class Client {
 		try {
 
 			if(this.sharedKeyWS1 == null) {
-				requestAccessBlackBoard();
+				requestWSAccess(this.WS1_ID);
 			}
 			
 			this.sockWS1 = new Socket("localhost", PORT_WS1);
 			ArrayList<Object> request = new ArrayList<Object>();
 			
-			//
-			//AES construction
-			//
-			String key = "Ivenoideawhatodo";
-			byte[] raw = key.getBytes();
-			SecretKeySpec sks = new SecretKeySpec(raw, "AES");
-			Cipher ciph = Cipher.getInstance("AES/CBC/PKCS5Padding");
-			ciph.init(Cipher.ENCRYPT_MODE, sks, new IvParameterSpec(new byte[16]));
-
-			SealedObject encryptedRequestType = new SealedObject(WS1_PRINT, ciph);			
+			SealedObject encryptedRequestType = AESCipher(WS1_PRINT);			
 			
 			//Adds the elements to the list
 			request.add(CLIENT_ID);
@@ -307,7 +315,7 @@ public class Client {
 			
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
 				| IllegalBlockSizeException | ClassNotFoundException
-				| IOException | InvalidAlgorithmParameterException e) {
+				| IOException e) {
 			e.printStackTrace();
 		}
 		
@@ -318,13 +326,13 @@ public class Client {
 		
 		System.out.println("Alright. Please type hereunder the message to write on your black board:");
 		Scanner sc = new Scanner(System.in);
-		String message = "Lamasticot";
+		String message = "";
 		message += sc.nextLine();
 		sc.close();
 		try {
 
 			if(this.sharedKeyWS1 == null) {
-				requestAccessBlackBoard();
+				requestWSAccess(this.WS1_ID);
 			}
 	
 			this.sockWS1 = new Socket("localhost", PORT_WS1);
@@ -363,12 +371,95 @@ public class Client {
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
 	private void printPasswd() {
-		
+		try {
+
+			if(this.sharedKeyWS2 == null) {
+				requestWSAccess(this.WS2_ID);
+			}
+			
+			this.sockWS2 = new Socket("localhost", this.PORT_WS2);
+			ArrayList<Object> request = new ArrayList<Object>();
+
+			SealedObject encryptedRequestType = AESCipher(WS2_PRINT);			
+			
+			//Adds the elements to the list
+			request.add(CLIENT_ID);
+			request.add(encryptedRequestType);
+
+			//Sends the object
+			ObjectOutputStream outWS = new ObjectOutputStream(sockWS2.getOutputStream());
+			outWS.writeObject(request);
+			outWS.flush();
+			
+			//Receives the messages
+			ObjectInputStream ois = new ObjectInputStream(this.sockAS.getInputStream());
+	        ArrayList<String> passMes = new ArrayList<String>();
+	        passMes = (ArrayList<String>)AESDecipher(ois.readObject());
+			
+			this.sockWS2.close();
+			
+			
+			ListIterator<String> li = passMes.listIterator();
+			System.out.println("Your Passwords:\n------------");
+			while(li.hasNext()) {
+				System.out.println(li.next()+"------------");
+			}
+			
+		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
+				| IllegalBlockSizeException | ClassNotFoundException
+				| IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private void addPasswd() {
-		
+		System.out.println("Alright. Please type hereunder the password to store:");
+		Scanner sc = new Scanner(System.in);
+		String message = "";
+		message += sc.nextLine();
+		sc.close();
+		try {
+
+			if(this.sharedKeyWS2 == null) {
+				requestWSAccess(this.WS2_ID);
+			}
+	
+			this.sockWS1 = new Socket("localhost", PORT_WS2);
+			ArrayList<Object> request = new ArrayList<Object>();
+			
+			//Encryption
+			SealedObject encryptedRequestType = AESCipher(WS2_WRITE);	
+			SealedObject encryptedMessage = AESCipher(message);
+			
+			//Adds the elements to the list
+			request.add(CLIENT_ID);//0
+			request.add(encryptedRequestType);//1
+			request.add(encryptedMessage);//2
+
+			//Sends the object
+			ObjectOutputStream outWS = new ObjectOutputStream(sockWS2.getOutputStream());
+			outWS.writeObject(request);
+			outWS.flush();
+			System.out.println("Message sent. Awaiting the web service answer...");
+			
+			//Receives the messages
+			ObjectInputStream ois = new ObjectInputStream(this.sockWS2.getInputStream());
+	        if((boolean)AESDecipher(ois.readObject())) {
+	        	System.out.println("Writing successful.");
+	        }
+	        else {
+	        	System.out.println("Writing failed.");
+	        }
+			
+			this.sockWS2.close();
+			
+		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
+				| IllegalBlockSizeException | ClassNotFoundException
+				| IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	/**
