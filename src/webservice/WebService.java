@@ -175,6 +175,7 @@ public abstract class WebService implements Runnable {
 			message.add(this.WSpublicKey); //4 TODO TESTING ONLY
 //			out.writeObject(message); //send the ID and the encrypted ID+challenge
 			this.ASSocketOOS.writeObject(message);
+			this.ASSocketOOS.flush();
 //			out.flush();
 //			out.close();
 		} catch (IOException e) {
@@ -234,7 +235,7 @@ public abstract class WebService implements Runnable {
 //			ObjectOutputStream out = new ObjectOutputStream(ASsocket.getOutputStream());
 //			out.writeObject(decryptedRandom2);
 			this.ASSocketOOS.writeObject(decryptedRandom2);
-//			out.flush();
+			this.ASSocketOOS.flush();
 //			out.close();
 		} catch (IOException e) {
 			System.out.println("WEBSERVICE: error AS connection: sending step3:"+e.getMessage());
@@ -334,6 +335,7 @@ public abstract class WebService implements Runnable {
 		ASSocketOOS = null;
 			try {
 				this.ASSocketOOS = new ObjectOutputStream(this.ASsocket.getOutputStream());
+				this.ASSocketOOS.flush();
 				System.out.println("WS:initialised ASSocketOOS ok");
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -341,10 +343,12 @@ public abstract class WebService implements Runnable {
 //		}
 			ASSocketOIS = null;
 //		if(ASSocketOIS == null) {
+			System.out.println("In between");
 			try {
 				this.ASSocketOIS = new ObjectInputStream(this.ASsocket.getInputStream());
 				System.out.println("WS:initialised ASSocketOIS ok");
 			} catch (IOException e) {
+				System.out.println("CAUGHT A BULLET");
 				e.printStackTrace();
 			}
 //		}
