@@ -8,9 +8,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 
-public class BlackboardDB {
+public class KeychainDB {
 
-	private static BlackboardDB INSTANCE = null;
+	private static KeychainDB INSTANCE = null;
 	private static String HOST = "localhost";
 	private static String PORT = "3306";
 	private static String USER = "root";
@@ -20,22 +20,22 @@ public class BlackboardDB {
 	private static PreparedStatement prepStmt;
 	private static Connection con;
 	
-	public static BlackboardDB getInstance() {
+	public static KeychainDB getInstance() {
 		if(INSTANCE==null) {
-			INSTANCE = new BlackboardDB();
+			INSTANCE = new KeychainDB();
 		}
 		return INSTANCE;
 	}
 	
-	private BlackboardDB() {
-		String url = "jdbc:mysql://"+HOST+":"+PORT+"/Blackboard?createDatabaseIfNotExist=true";
-		BlackboardDB.con = null;
-		BlackboardDB.stmt = null;
+	private KeychainDB() {
+		String url = "jdbc:mysql://"+HOST+":"+PORT+"/Keychain?createDatabaseIfNotExist=true";
+		KeychainDB.con = null;
+		KeychainDB.stmt = null;
 		try {
 			Class.forName("com.mysql.jdbc.Driver");//load the driver
 			con = DriverManager.getConnection(url,USER,PASS); //connect to mysql
 			this.createTable(); //create tables if not exist :
-			System.out.println("Connected to BlackboardDB successfully"); //DEBUG
+			System.out.println("Connected to KeychainDB successfully"); //DEBUG
 		} catch (SQLException e) {
 				e.printStackTrace();
 		} catch (ClassNotFoundException e) {
@@ -45,10 +45,10 @@ public class BlackboardDB {
 	}
 	
 	private void createTable() {
-		String sql = "CREATE TABLE IF NOT EXISTS Blackboard.Posts (" +
+		String sql = "CREATE TABLE IF NOT EXISTS Keychain.Passwords (" +
 				"ID INT NOT NULL AUTO_INCREMENT," +
 				"ClientID INT NOT NULL," +
-				"Message TEXT NOT NULL," +
+				"Pass VARCHAR(255) NOT NULL," +
 				"PRIMARY KEY(ID)" +
 				") ENGINE=InnoDB;";
 		try {
@@ -90,26 +90,26 @@ public class BlackboardDB {
 	}
 
 	/**
-	 * Returns all the posts of a client made on the blackboard
+	 * Returns all the passwords of a client stored in the keychain
 	 * @param clientID
-	 * @return Returns an ArrayList of Messages; might be empty; null if an error occured
+	 * @return Returns an ArrayList of passwords; might be empty; null if an error occured
 	 */
-	public ArrayList<String> getMyPosts(int clientID) {
+	public ArrayList<String> getMyPasses(int clientID) {
 		ArrayList<String> res = new ArrayList<String>();
-		String sql = "SELECT p.Message FROM Blackboard.Posts p WHERE p.ClientID="+clientID;
-//		System.out.println(sql); //DEBUG
+		String sql = "SELECT k.Pass FROM Keychain.Passwords k WHERE k.ClientID="+clientID;
+		System.out.println(sql); //DEBUG
 		ResultSet rs;
 		try {
 			stmt = con.createStatement();
 			rs = stmt.executeQuery(sql);
 			while (rs.next()) {
-				String s = new String(rs.getString("Message")); 
+				String s = new String(rs.getString("Pass")); 
 				res.add(s);
-//				System.out.println("found : string="+s);
+				System.out.println("found : string="+s);
 			}
-//			if(res.isEmpty())
-//				System.out.println("EMPTY ResultSet");
-//			System.out.println("GetMyPosts = success"); //DEBUG
+			if(res.isEmpty())
+				System.out.println("EMPTY ResultSet");
+			System.out.println("GetMyPosts = success"); //DEBUG
 		} catch (SQLException e) {
 			e.printStackTrace();
 			return null;
@@ -120,16 +120,16 @@ public class BlackboardDB {
 		return res;
 	}
 	
-	public boolean writeOnBoard(int clientID, String msg) {
-		String sql = "INSERT INTO Blackboard.Posts (ClientID,Message) VALUES (?,?)";
+	public boolean addNewPass(int clientID, String pass) {
+		String sql = "INSERT INTO Keychain.Passwords (ClientID,Pass) VALUES (?,?)";
 		int lines;
 		try {
 			prepStmt = con.prepareStatement(sql);
 			prepStmt.setInt(1,clientID);
-			prepStmt.setString(2, msg);
-//			System.out.println(prepStmt.toString());//DEBUG
+			prepStmt.setString(2, pass);
+			System.out.println(prepStmt.toString());//DEBUG
 			lines = prepStmt.executeUpdate();
-//			System.out.println("modified nb lines :"+lines); //DEBUG
+			System.out.println("modified nb lines :"+lines); //DEBUG
 		} catch (SQLException e) {
 			e.printStackTrace();
 			return false;
