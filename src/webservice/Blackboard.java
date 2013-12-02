@@ -32,17 +32,16 @@ public class Blackboard extends WebService {
 							this.getCipherOfSharedKey(super.getClientKey(clientID), ENCRYPT));
 					//send it to client
 					out.writeObject(encryptedMsg);
-				} catch (IllegalBlockSizeException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
+				} catch (IllegalBlockSizeException | IOException e) {
+					System.out.println("Blackboard answering to client: error:" + e.getMessage());
 					e.printStackTrace();
 				}
 			} else if(requestType==WRITE && !reqMsg.isEmpty()) {
-//				BlackboardDB.getInstance().writeOnBoard(clientID, "Rainbow poney");//TESTING PURPOSE
-				System.out.println("Message sent by the client: "+reqMsg);
-				BlackboardDB.getInstance().writeOnBoard(clientID, reqMsg);
+				boolean success = BlackboardDB.getInstance().writeOnBoard(clientID, reqMsg);
+				if(success)
+					System.out.println("Blackboard: new message written with success");
+				else
+					System.out.println("Blackboard: error on writing new message");
 			}
 		}
 	}
@@ -50,6 +49,6 @@ public class Blackboard extends WebService {
 	public static void main(String[] args) {
 		new Blackboard();
 		BlackboardDB.getInstance().closeConnection();
-		System.out.println("WebService terminated");
+		System.out.println("Blackboard web service terminated");
 	}
 }

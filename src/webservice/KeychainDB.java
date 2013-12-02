@@ -82,7 +82,7 @@ public class KeychainDB {
 		if(con!=null) {
 			try {
 				con.close();
-				System.out.println("Closed DB connection successfully");
+				System.out.println("Closed KeychainDB connection successfully");
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
@@ -94,10 +94,9 @@ public class KeychainDB {
 	 * @param clientID
 	 * @return Returns an ArrayList of passwords; might be empty; null if an error occured
 	 */
-	public ArrayList<String> getMyPasses(int clientID) {
+	public ArrayList<String> getMyPasswords(int clientID) {
 		ArrayList<String> res = new ArrayList<String>();
 		String sql = "SELECT k.Pass FROM Keychain.Passwords k WHERE k.ClientID="+clientID;
-		System.out.println(sql); //DEBUG
 		ResultSet rs;
 		try {
 			stmt = con.createStatement();
@@ -105,11 +104,7 @@ public class KeychainDB {
 			while (rs.next()) {
 				String s = new String(rs.getString("Pass")); 
 				res.add(s);
-				System.out.println("found : string="+s);
 			}
-			if(res.isEmpty())
-				System.out.println("EMPTY ResultSet");
-			System.out.println("GetMyPosts = success"); //DEBUG
 		} catch (SQLException e) {
 			e.printStackTrace();
 			return null;
@@ -127,9 +122,7 @@ public class KeychainDB {
 			prepStmt = con.prepareStatement(sql);
 			prepStmt.setInt(1,clientID);
 			prepStmt.setString(2, pass);
-			System.out.println(prepStmt.toString());//DEBUG
 			lines = prepStmt.executeUpdate();
-			System.out.println("modified nb lines :"+lines); //DEBUG
 		} catch (SQLException e) {
 			e.printStackTrace();
 			return false;
