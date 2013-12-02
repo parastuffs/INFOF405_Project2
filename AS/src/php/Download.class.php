@@ -52,7 +52,7 @@ class Download extends General
                 return array('resulState'=>false,'resultText'=>'BIG PROBLEM! Impossible to delete the file src/files/key.'.$idKey.'.all.pem!');
                 
         //Done.
-        return array('resulState'=>true,'resultText'=>'Key file successfully sent!');
+        return array('resultState'=>true,'resultText'=>'Key file successfully sent!');
     }
     
     

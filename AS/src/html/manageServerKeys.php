@@ -4,15 +4,7 @@ if(isset($_GET['id']))
     $id = $_GET['id'];
 
 //We check if we have to revoke a key
-if(isset($_GET['revokeSym']) && isset($_GET['id']))
-{
-    $res = $Key->revocationSymmetricKey($id, $_GET['revokeSym']);
-    if($res['resultState'] === true)
-        echo '<font color="green">'.$res['resultText'].'</font>';
-    else
-        echo '<font color="red">'.$res['resultText'].'</font>';
-}
-else if(isset($_GET['revokeAsym']) && isset($_GET['id']))
+if(isset($_GET['revokeAsym']) && isset($_GET['id']))
 {   
     $res = $Key->revocationAsymmetricKey($id, $_GET['revokeAsym']);
     if($res['resultState'] === true)
@@ -47,18 +39,13 @@ foreach($list as $in => $server)
         echo '  <th>Destination</th>';
         echo '  <th>Creation date</th>';
         echo '  <th>Validity</th>';
-        echo '  <th>Revoke</th>';
         echo '</tr>';
         
         foreach($symKeys['keys'] as $key => $value)
         {
             $validity = 'Active';
-            $revoke = '<a href="?page=manageServerKeys&amp;generalToken='.$Access->getGeneralToken().'&amp;id='.htmlspecialchars($id).'&amp;revokeSym='.htmlspecialchars($key).'">Revoke the key</a>';
             if($symKeys['keys'][$key]['validity'] != 1)
-            {
                 $validity = 'Disactived';
-                $revoke = 'Already revoked';
-            }            
             
             echo '<tr>';
             echo '  <td>'.htmlspecialchars($key).'</td>';
@@ -66,7 +53,6 @@ foreach($list as $in => $server)
             echo '  <td>'.htmlspecialchars($symKeys['keys'][$key]['destination']).'</td>';
             echo '  <td>'.htmlspecialchars($symKeys['keys'][$key]['creationDate']).'</td>';
             echo '  <td>'.$validity.'</td>';
-            echo '  <td>'.$revoke.'</td>';
             echo '</tr>';
         }
         echo '<br/>';
@@ -74,7 +60,7 @@ foreach($list as $in => $server)
     else
     {
         echo 'There is no session key for this server.';
-        echo '<br/>';
+        echo '<br/><br/>';
     }
 
     //We take the public key of the user (the private key is never stored in the db)

@@ -10,12 +10,12 @@ function __autoload($className)
 //Just for the correction of basic errors (and they will be used furthermore)
 $General = new General();
 $Access = new Access();
-$Communication = new Communication();
 $Key = new Key();
 $User = new User();
 $Ini = new Ini();
 
 $Ini->serverKeys();
+unset($Ini);
 
 //Some verifications
 if(!isset($_GET['page']))
@@ -33,15 +33,21 @@ $token = '';
 if(isset($_GET['generalToken']))
     $token = $_GET['generalToken'];
     
-//We check if the user has the rights to access to this page (with the general toke)
+//We check if the user has the rights to access to this page (with the general token). Note: the token is not active for the download & index page
 $vf = $Access->verificationValidToken($page, $token);
 if($vf['resultState'] === false)    
     exit($vf['resultText']);
     
 //We display it
-include('src/html/include/head.html');
-include('src/html/include/listing.html');
-include('src/html/'.$page.'.php');
-include('src/html/include/bottom.html');
-    
+if($page == 'download')
+{
+    include('src/html/'.$page.'.php');
+}
+else
+{
+    include('src/html/include/head.html');
+    include('src/html/include/listing.html');
+    include('src/html/'.$page.'.php');
+    include('src/html/include/bottom.html');
+}   
 ?>

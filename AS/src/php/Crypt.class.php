@@ -5,8 +5,8 @@ class Crypt extends General
     const ALGO = 'rijndael-128';
     const MODE = 'cfb';
     
-    //Specific salt which is load at the creation of the website to avoid the "sécurité par l'aveugle". DO NOT change the following line manually without checking src/ini.php!
-    const SPECIFIC_SALT = "54449e23551a92e1ce64b957848bab2e8efcb00a";
+    //Specific salt which is load at the creation of the website to avoid the "sécurité par l'aveugle". DO NOT change the following line manually! Not even a space. NEVER.
+    const SPECIFIC_SALT = "be982414e70f5b7dcfb2f6ad24b607405b0c42fc";
     
     /**
      * Allows to crypt the information with a given password 

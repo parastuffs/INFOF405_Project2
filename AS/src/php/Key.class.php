@@ -51,9 +51,10 @@ class Key extends General
         $certificate = openssl_csr_sign($certificateSign, null, $privateKey, 365);
         openssl_csr_export($certificateSign, $csrout);
         openssl_x509_export($certificate, $certout);
+        openssl_pkey_export($privateKey, $signPass, sha1('69zfe8949fze)àç!è!ç98'.Crypt::SPECIFIC_SALT));
         
         //Done.
-        return array('resultState'=>true,'resultText'=>'Keys successfully created!','publicKey'=>$publicKey,'privateKey'=>$privateKey,'certificateSign'=>$csrout,'certificate'=>$certout);
+        return array('resultState'=>true,'resultText'=>'Keys successfully created!','publicKey'=>$publicKey,'privateKey'=>$privateKey,'certificateSign'=>$csrout,'certificate'=>$certout,'signPass'=>$signPass);
     }
     
     /**
@@ -125,56 +126,11 @@ class Key extends General
         //We return the created key and the time it is valid.
         return array('publicKey'=>$keys['publicKey'],'privateKey'=>$keys['privateKey'],'id'=>$vf['id'],'link'=>$link,'linkCertificate'=>$linkCertificate);
     } 
-    
-    /**
-     * Return the symetric key actually used between two servers
-     * @param $origin 
-     * @param $destination
-     * @return array('key'=>String,'creationDate'=>int);
-     */
-    public function getSymKey($origin, $destination)
-    {        
-        $p = $this->db->prepare("SELECT * FROM sessionkey WHERE origin = :ori AND destination = :dest validity=:valid ORDER BY creationDate DESC LIMIT 1");
-		$p->execute(array('ori'=>Crypt::encrypt($origin, Crypt::passwordKeyOrigin()),'dest'=>Crypt::encrypt($destination, Crypt::passwordKeyOrigin()),'valid'=>1));
-		$vf = $p->fetch(PDO::FETCH_ASSOC);
-		$p->closeCursor();	
         
-        if(isset($vf['id']))
-            return array('key'=>Crypt::decrypt($vf['key'], Crypt::passwordSessionKey($vf['salt'])),'creationDate'=>$vf['creationDate']);
-        else
-            return array('key'=>'','creationDate'=>0);
-    }
-    
-    /**
-     * Return a new symetric key to be used to communicate. If it's a client, change the below 'ID_CLIENT' by their id.
-     * @param $origin the origin (one from these: 'WS1', 'WS2', 'AS', 'CL'.$ID_CLIENT)
-     * @param $destination the destination (one from these: 'WS1', 'WS2', 'AS', 'CL'.$ID_CLIENT)
-     * @return array('key'=>String,'validityTime'=>int);
-     */
-    public function getNewSymKey($origin, $destination)
-    {
-        //We create the symetric key based on a salt
-        $key = $this->createSalt(50);
-        
-        //We generate another salt
-        $salt = $this->createSalt();
-        
-        $cryptedKey = Crypt::encrypt($key, Crypt::passwordSessionKey($salt));
-        $origin = Crypt::encrypt($origin, Crypt::passwordKeyOrigin());
-        $destination = Crypt::encrypt($destination, Crypt::passwordKeyDestination());
-        
-        //We insert them into the db
-        $p = $this->db->prepare("INSERT INTO sessionkey VALUES (NULL, :key, :origin, :horigin, :destination, :hdestination, :salt, :creationDate, :validity)");
-		$p->execute(array('key'=>$cryptedKey,'origin'=>$origin,'horigin'=>Crypt::hashedId($origin),'destination'=>$destination,'hdestination'=>Crypt::hashedId($destination),'creationDate'=>time(),'salt'=>$salt,'validity'=>1));
-		$p->closeCursor();	
-        
-        //We return the created key and the time it is valid.
-        return array('key'=>$key,'validityTime'=>self::TIME_SESSION_KEY);
-    }    
     
     /**
      * Display all the symetric keys used by a user (the most recent first)
-     * @param $id int the id of the user
+     * @param $id int the id of the user (it could be 'AS', 'WS1' or 'WS2' too)
      * @return array('resultState'=>bool,'resultText'=>String,'keys'=>array($id=>array('key'=>String,'origin'=>String,'destination'=>String),...))
      */
     public function displayUserKeys($id)
@@ -232,37 +188,6 @@ class Key extends General
         //Done.
         return array('resultState'=>true,'resultText'=>'Key successfully revoked');
     }
-    
-    /**
-     * Revocation of a specified symmetric key into the db (but we have to send the information to the concerned WS or client too!)
-     * @param $id the id of the owner
-     * @param $keyId the key id to revoke
-     */
-    public function revocationSymmetricKey($id, $keyId)
-    {
-        if(!is_int($keyId) || $keyId < 0)
-            return array('resultState'=>false,'resultText'=>'Invalid symetric key id.');
-        
-        if(!preg_match('#^(AS|WS1|WS2|CL[0-9]{1,5})$#',$id))
-            return array('resultState'=>false,'resultText'=>'Invalid id of owner.');
-        
-        //We take the key  
-        $p = $this->db->prepare("SELECT * FROM sessionkey WHERE id = :id AND (horigin = :hid OR hdestination = :hid) AND validity = 1");
-		$p->execute(array('hid'=>Crypt::hashedId($id),'id'=>$keyId));
-		$res = $p->fetch(PDO::FETCH_ASSOC);
-		$p->closeCursor();
-        
-        if(!isset($res['id']))
-            return array('resultState'=>false,'resultText'=>'This key is not into the db or it is already revoked.');
-            
-        //We revoke the key
-        $p = $this->db->prepare("UPDATE sessionkey SET validity=:validity WHERE id = :id AND (horigin = :hid OR hdestination = :hid) LIMIT 1");
-		$p->execute(array('validity'=>0,'hid'=>Crypt::hashedId($id),'id'=>$keyId));
-		$p->closeCursor();
-        
-        //Done.
-        return array('resultState'=>true,'resultText'=>'Key successfully revoked');
-    }    
 }
 
 ?>
