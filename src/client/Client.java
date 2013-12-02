@@ -177,6 +177,7 @@ public class Client {
 		
 		ObjectOutputStream outAS = new ObjectOutputStream(this.sockAS.getOutputStream());
 		outAS.writeObject(message);
+		outAS.flush();
 		
 		//
 		//Second, awaits the answer from the AS
@@ -203,6 +204,7 @@ public class Client {
         	//
         	System.out.println("Everything is fine so far, proceeding to step 3: sending back the challenge r4.");
         	outAS.writeObject(this.r4);
+        	outAS.flush();
         	
         	//
         	//Fourth, AS sends the symmetric key to dialog with WS
@@ -228,6 +230,10 @@ public class Client {
     		t.schedule(timer, cryptoperiodWS1*1000);
     		
         	r3Challenge = (byte[])RSADecipher(answer.get(2));
+        	
+        	//closing the IO stream :
+        	outAS.close();
+        	ois.close();
         	
         	if(Arrays.equals(r3Challenge,this.r3)) {
         		closeConnectionAS();

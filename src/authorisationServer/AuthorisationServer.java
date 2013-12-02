@@ -57,11 +57,11 @@ public class AuthorisationServer implements Runnable{
 	private Cipher decryptWithASPrivateKey;
 	private Cipher encryptWithWSSharedKey;
 	private List<byte[]> nonces; //list of random "nonces"
-	private Key AESKeyWithWS; //TODO TESTING purpose; do it in a better way
+	private Key fromAStoWSKey; //TODO TESTING purpose; do it in a better way
 	private PrivateKey ASprivateKey;
 	private PublicKey WS1publicKey;
 	private PublicKey WS2publicKey;
-	private final int CRYPTOPERIOD = 7200;//2 hours
+	private final int CRYPTOPERIOD = 7200;//2 hours <->7200 seconds
 	private Key clientToWSKey;
 	//TODO for testing, remove when DB OK
 	private final String PUBLICKEYFILE_CLIENT = "certs/key.CL1.public.pem";
@@ -78,6 +78,8 @@ public class AuthorisationServer implements Runnable{
 
 	private ObjectOutputStream clientOOS = null;
 	private ObjectInputStream clientOIS=null;
+	private ObjectOutputStream ws1OOS = null;
+//	private ObjectInputStream ws1OIS = null;
 	
 	public AuthorisationServer(Socket socket) {
 
@@ -120,6 +122,22 @@ public class AuthorisationServer implements Runnable{
 				e.printStackTrace();
 			}
 		}
+	}
+	
+	private void closeObjectIOStream() {
+		System.out.println("AS: closing IO streams");
+		if(this.clientOIS!=null)
+			try {
+				this.clientOIS.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		if(this.clientOOS!=null)
+			try {
+				this.clientOOS.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 	}
 	/**
 	 * Method loading the private keys from the .pem file.
@@ -226,15 +244,17 @@ public class AuthorisationServer implements Runnable{
 		SealedObject encryptedNonce4 = RSACipher(r4,this.clientPublicKey.get(requestClientID));
 		
 		//Objects to send:
-		ObjectOutputStream out;
-		out = new ObjectOutputStream(clientSocket.getOutputStream());
+//		ObjectOutputStream out;
+//		out = new ObjectOutputStream(clientSocket.getOutputStream());
 		ArrayList<Object> message = new ArrayList<Object>();
 		message.add(encryptedASid); //0
 		message.add(encryptedWSID); //1
 		message.add(encryptedNonce3); //2
 		message.add(encryptedNonce4);//3
-		out.writeObject(message);
-		out.flush();
+//		out.writeObject(message);
+//		out.flush();
+		this.clientOOS.writeObject(message);
+		this.clientOOS.flush();
 		System.out.println("End of step 2");
 		//end of STEP 2
 
@@ -258,28 +278,30 @@ public class AuthorisationServer implements Runnable{
 		//Now, send the symetric key to the client.
 		//
 		this.clientToWSKey = generateAESKey();
-		sendAESKeyToClient(r3Challenge, requestClientID, out);
-		sendClientInfoToWS();
+//		sendAESKeyToClient(r3Challenge, requestClientID, out);
+		sendAESKeyToClient(r3Challenge, requestClientID, this.clientOOS);
+		sendClientInfoToWS(requestClientID);//TODO add server outstream
 
-		out.close();
+//		out.close();
+		this.closeObjectIOStream();
 		
 		return true;
 	}
 	
-	
 	/**
 	 * generates the Session Key for WS<->Client, and sends the (client ID, key, cryptoperiod) to WS
 	 */
-	private boolean sendClientInfoToWS() {
-		int period = 7200; //2h <-> 7200 seconds
+	private boolean sendClientInfoToWS(int clientID) {
+		int period = CRYPTOPERIOD;
 		if(clientToWSKey==null)
 			return false;
-		int clientID = 720;//TODO TESTING ONLY
-		
+//		int clientID = 720;//TODO TESTING ONLY
+		System.out.println("Preparing to sent Client info to WS");
+		System.out.println("OOS client="+clientOOS.toString()+",ws="+ws1OOS.toString());
 		//encrypting :
 		SealedObject encryptedKey, encryptedClientID, encryptedPeriod;
 		try {
-			encryptedKey = new SealedObject(clientToWSKey,encryptWithWSSharedKey);
+			encryptedKey = new SealedObject(clientToWSKey.getEncoded(),encryptWithWSSharedKey); //TODO need to Key.getEncoded()?
 			encryptedClientID = new SealedObject(clientID,encryptWithWSSharedKey);
 			encryptedPeriod = new SealedObject(period,encryptWithWSSharedKey);
 		} catch (IllegalBlockSizeException e1) {
@@ -298,11 +320,13 @@ public class AuthorisationServer implements Runnable{
 			message.add(encryptedKey); //2
 			message.add(encryptedPeriod); //3
 //			out.writeObject(message);
-			clientOOS.writeObject(message);
+			ws1OOS.writeObject(message);
+			ws1OOS.flush();
 		} catch (IOException e) {
 			System.out.println("Auth.Server: error WS connection: sending client info:"+e.getMessage());
 			return false;
 		}
+		System.out.println("AS: Key sent to WS");
 		return true;
 	}
 
@@ -415,14 +439,14 @@ public class AuthorisationServer implements Runnable{
 		System.out.println("Step 3 - ok");
 		//STEP 4
 		//generate Session Key and send it
-		AESKeyWithWS = generateAESKey();
-		if(AESKeyWithWS==null)//TODO TESTING only -> proper implement
+		fromAStoWSKey = generateAESKey();
+		if(fromAStoWSKey==null)//TODO TESTING only -> proper implement
 			return false;
 		initAESCipher();
 		//encrypting :
 		SealedObject encryptedKey = null;
 		try {
-			encryptedKey = new SealedObject(AESKeyWithWS.getEncoded(),encryptWithWSPublicKey);
+			encryptedKey = new SealedObject(fromAStoWSKey.getEncoded(),encryptWithWSPublicKey);
 		} catch (IllegalBlockSizeException e1) {
 			System.out.println("Auth.Server: error encrypting AES key:"+e1.getMessage());
 			return false;
@@ -459,7 +483,6 @@ public class AuthorisationServer implements Runnable{
 			if(a[i]!=b[i])
 				res = false;
 		}
-		System.out.println("comparaison:"+res);
 		return res;
 	}
 	
@@ -490,7 +513,7 @@ public class AuthorisationServer implements Runnable{
 	private void initAESCipher() { //init the cipher for communications with WS (AES)
 		try {
 			this.encryptWithWSSharedKey = Cipher.getInstance("AES/CBC/PKCS5Padding");
-			this.encryptWithWSSharedKey.init(Cipher.ENCRYPT_MODE, AESKeyWithWS, new IvParameterSpec(new byte[16]));
+			this.encryptWithWSSharedKey.init(Cipher.ENCRYPT_MODE, fromAStoWSKey, new IvParameterSpec(new byte[16]));
 		} catch (NoSuchAlgorithmException e) {
 			System.out.println("Auth.Server: error AES cipher init"+e.getMessage());
 		} catch (NoSuchPaddingException e) {
@@ -607,11 +630,12 @@ public class AuthorisationServer implements Runnable{
 				//clientSocket = serverSocket.accept();
 				//System.out.println("Auth.Server: New client connected: "+clientSocket.getInetAddress().toString());
 				
+//				ObjectOutputStream oos = new ObjectOutputStream(clientSocket.getOutputStream());
+//				oos.flush();
 //				ObjectInputStream ois = new ObjectInputStream(clientSocket.getInputStream()); 
 				ArrayList<Object> distantObjects = new ArrayList<Object>();
 //				distantObjects = (ArrayList<Object>) ois.readObject();
 				distantObjects = (ArrayList<Object>) this.clientOIS.readObject();
-				
 				int acceptedID = (int)distantObjects.get(0);
 				if(acceptedID == this.CLIENT_ID) {//We have a user
 					System.out.println("We have a client, here!");
@@ -623,6 +647,9 @@ public class AuthorisationServer implements Runnable{
 				}
 				else if(acceptedID == this.WS1_ID) {//First WS
 					System.out.println("Accepting WS1");
+//					this.ws1OOS = this.clientOOS;
+//					this.clientOOS.close();
+//					this.ws1OOS = new ObjectOutputStream(clientSocket.getOutputStream());
 					handshakeWithWS(distantObjects);
 				}
 				else if(acceptedID == this.WS2_ID) {//Second WS

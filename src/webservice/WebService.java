@@ -568,7 +568,9 @@ public abstract class WebService implements Runnable {
 			try {
 				//read message
 //				received=receiveFromAS.readObject();
+				System.out.println("Thread waiting for incoming msg from AS");
 				received = this.ASSocketOIS.readObject();
+				System.out.println("Thread received new msg from AS");
 				//get informations
 				ArrayList<?> message = (ArrayList<?>) received;
 				idFromAS = (Integer) message.get(0);

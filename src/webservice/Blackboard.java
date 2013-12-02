@@ -50,5 +50,6 @@ public class Blackboard extends WebService {
 	public static void main(String[] args) {
 		new Blackboard();
 		BlackboardDB.getInstance().closeConnection();
+		System.out.println("WebService terminated");
 	}
 }
