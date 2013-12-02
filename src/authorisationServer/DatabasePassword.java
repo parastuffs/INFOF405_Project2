@@ -1,5 +1,3 @@
-package authorisationServer;
-
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.HashMap;
@@ -94,7 +92,7 @@ public class DatabasePassword {
 		}
 		else
 		{//We decrypt the text
-			return "";//TODO             IMPORTANT!!!!! Decryptage rijndael-128 mode cfb ï¿½ mettre en place (si probleme de mode ou quoi, je peux encore le changer)
+			return "";//TODO             IMPORTANT!!!!! Decryptage rijndael-128 mode cfb à mettre en place (si probleme de mode ou quoi, je peux encore le changer)
 		}
 	}
 	
@@ -120,7 +118,7 @@ public class DatabasePassword {
 		else
 		{//We crypt the text
 			
-            return "";//TODO             IMPORTANT!!!!! Cryptage rijndael-128 mode cfb ï¿½ mettre en place (si probleme de mode ou quoi, je peux encore le changer)
+            return "";//TODO             IMPORTANT!!!!! Cryptage rijndael-128 mode cfb à mettre en place (si probleme de mode ou quoi, je peux encore le changer)
 		}
 	}
 	
@@ -130,16 +128,16 @@ public class DatabasePassword {
 	public String password(String type, String salt)
 	{
 		Map<String, String> pass = new HashMap<String, String>();
-		pass.put("WS1", this.sha1("564zecv41zFEFEZ"+this.mainKey+"f4fl"+salt+"p^dz^l^p)ï¿½ï¿½1!ï¿½!ï¿½ï¿½'"));
-		pass.put("WS2", this.sha1("564zecv42zFEFEZ"+this.mainKey+"f4fl"+salt+"p^dz^l^p)ï¿½ï¿½2!ï¿½!ï¿½ï¿½'"));
-		pass.put("publicKey", this.sha1("^ï¿½)ï¿½ï¿½!ï¿½ï¿½ï¿½)"+this.mainKey+"ï¿½FEFEZï¿½ï¿½"+salt+"$55878zefFE"));
-		pass.put("privateKey", this.sha1("^ï¿½ï¿½$$^"+salt+"ï¿½$ï¿½ï¿½$$ï¿½ï¿½$czq$ï¿½$ï¿½cqsd$ï¿½q"+this.mainKey+"$ï¿½dqscv"+salt+"$558"));
-		pass.put("sessionKey", this.sha1("^ï¿½ï¿½$$^"+salt+"ï¿½56zef169ez1f56eï¿½!ï¿½!ï¿½"+this.mainKey+"ï¿½)$^ï¿½fezfezfezgecv"+salt+"$558"));
-		pass.put("keyOrigin", this.sha1("ï¿½)ï¿½ï¿½)&ï¿½)ï¿½ï¿½z"+this.mainKey+"gecv$558"));
-		pass.put("keyDestination", this.sha1("ï¿½)ï¿½ï¿½F4fez9E"+this.mainKey+"ecv$558"));
-		pass.put("passwordUsername", this.sha1("ï¿½45fzae"+this.mainKey+"zefzfe0979"+this.mainKey+"8IKpml$558"));
-		pass.put("hashidUsername", this.sha1("ï¿½)ï¿½ï¿½F45ï¿½ï¿½ï¿½!"+salt+"ï¿½fez9Eec"+this.mainKey+"v$558"));
-		pass.put("hashedId", this.sha1("ï¿½EFZEFï¿½ï¿½!"+salt+"ï¿½fezrthtr"+this.mainKey+"cv$558"));
+		pass.put("WS1", this.sha1("564zecv41zFEFEZ"+this.mainKey+"f4fl"+salt+"pOInjfoezi1zefzeggezezf"));
+		pass.put("WS2", this.sha1("564zecv42zFEFEZ"+this.mainKey+"f4fl"+salt+"pOInjfoezi2zefzeggezezf"));
+		pass.put("publicKey", this.sha1("ZOiknfeziFZE49f"+this.mainKey+"FZplkFZA549"+salt+"55878zefFE"));
+		pass.put("privateKey", this.sha1("ZDKfezjFEZ"+salt+"MPOKVFDFGBVSZDZ55669"+this.mainKey+"ZQjinodz"+salt+"558"));
+		pass.put("sessionKey", this.sha1("DZAkoncqazsc"+salt+"FZE1fez5ez5fFEZfzesPOI"+this.mainKey+"ZEFiouijfeznoief66989"+salt+"558"));
+		pass.put("keyOrigin", this.sha1("KIJ535NFEijncszec"+this.mainKey+"gecv558"));
+		pass.put("keyDestination", this.sha1("FEZFEZEFZfezfddsfsdfrFE"+this.mainKey+"ec54469gre8"));
+		pass.put("passwordUsername", this.sha1("FZEFEZdslmiue"+this.mainKey+"zefzfe0979"+this.mainKey+"8IKpml558"));
+		pass.put("hashedUsername", this.sha1("uDZIubnDZF"+salt+"DFZEAijfd546"+this.mainKey+"vfDZA56ffe"));
+		pass.put("hashedId", this.sha1("fsez9ef"+salt+"gfEgfr569z6"+this.mainKey+"cgr5g66EGF8"));
 		
 		if(!pass.containsKey(type))
 		{

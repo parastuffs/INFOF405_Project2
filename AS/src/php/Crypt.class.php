@@ -3,7 +3,7 @@
 class Crypt extends General
 {
     const ALGO = 'rijndael-128';
-    const MODE = 'cfb';
+    const MODE = 'cbc';
     
     //Specific salt which is load at the creation of the website to avoid the "sécurité par l'aveugle". DO NOT change the following line manually! Not even a space. NEVER.
     const SPECIFIC_SALT = "be982414e70f5b7dcfb2f6ad24b607405b0c42fc";
@@ -71,7 +71,7 @@ class Crypt extends General
      */
     public static function passwordWS($WS, $salt)
     {        
-        return sha1('564zecv4'.$WS.'zFEFEZ'.self::SPECIFIC_SALT.'f4fl'.$salt.'p^dz^l^p)àç'.$WS.'!à!èç');
+        return sha1('564zecv4'.$WS.'zFEFEZ'.self::SPECIFIC_SALT.'f4fl'.$salt.'pOInjfoezi'.$WS.'zefzeggezezf');
     }
     
     /**
@@ -81,7 +81,7 @@ class Crypt extends General
      */
     public static function passwordPublicKey($salt)
     {        
-        return sha1('^à)çà!çèç)'.self::SPECIFIC_SALT.'§FEFEZµù'.$salt.'$55878zefFE');
+        return sha1('ZOiknfeziFZE49f'.self::SPECIFIC_SALT.'FZplkFZA549'.$salt.'55878zefFE');
     }
         
     /**
@@ -91,7 +91,7 @@ class Crypt extends General
      */
     public static function passwordPrivateKey($salt)
     {        
-        return sha1('^àù$$^'.$salt.'ù$ùù$$ùù$czq$ù$ùcqsd$ùq'.self::SPECIFIC_SALT.'$ùdqscv'.$salt.'$558');
+        return sha1('ZDKfezjFEZ'.$salt.'MPOKVFDFGBVSZDZ55669'.self::SPECIFIC_SALT.'ZQjinodz'.$salt.'558');
     }
     
     /**
@@ -101,7 +101,7 @@ class Crypt extends General
      */
     public static function passwordSessionKey($salt)
     {        
-        return sha1('^àù$$^'.$salt.'ù56zef169ez1f56eç!è!ç'.self::SPECIFIC_SALT.'à)$^ùµfezfezfezgecv'.$salt.'$558');
+        return sha1('DZAkoncqazsc'.$salt.'FZE1fez5ez5fFEZfzesPOI'.self::SPECIFIC_SALT.'ZEFiouijfeznoief66989'.$salt.'558');
     }
     
     /**
@@ -110,7 +110,7 @@ class Crypt extends General
      */
     public static function passwordKeyOrigin()
     {        
-        return sha1('à)àç)&é)éàz'.self::SPECIFIC_SALT.'gecv$558');
+        return sha1('KIJ535NFEijncszec'.self::SPECIFIC_SALT.'gecv558');
     }
     
     /**
@@ -119,7 +119,7 @@ class Crypt extends General
      */
     public static function passwordKeyDestination()
     {        
-        return sha1('à)àçF4fez9"E'.self::SPECIFIC_SALT.'ecv$558');
+        return sha1('FEZFEZEFZfezfddsfsdfrFE'.self::SPECIFIC_SALT.'ec54469gre8');
     }
     
     /**
@@ -129,7 +129,7 @@ class Crypt extends General
      */
     public static function passwordUsername($salt)
     {        
-        return sha1('à45fzae'.self::SPECIFIC_SALT.'zefzfe0979'.$salt.'8IKpml$558');
+        return sha1('FZEFEZdslmiue'.self::SPECIFIC_SALT.'zefzfe0979'.$salt.'8IKpml558');
     }
     
     /**
@@ -139,7 +139,7 @@ class Crypt extends General
      */
     public static function hashedUsername($username)
     {        
-        return sha1('à)àçF45àè§è!'.$username.'èfez9"Eec'.self::SPECIFIC_SALT.'v$558');
+        return sha1('uDZIubnDZF'.$username.'DFZEAijfd546'.self::SPECIFIC_SALT.'vfDZA56ffe');
     }
     
     /**
@@ -150,7 +150,7 @@ class Crypt extends General
      */
     public static function tokenKeyFile($id, $certificate)
     {        
-        return sha1('à)àzeE'.$certificate.'FZEFASA'.self::SPECIFIC_SALT.'LPLfàè§è!'.$id.'è519ezr$558');
+        return sha1('F45zef69ef'.$certificate.'FZEFASA'.self::SPECIFIC_SALT.'FEibisqfsd!'.$id.'854fe9z8418fe');
     }
     
     /**
@@ -160,7 +160,7 @@ class Crypt extends General
      */
     public static function passwordKeyFile($id)
     {        
-        return sha1('àad4z9a5'.self::SPECIFIC_SALT.'9zda9az§è!'.$id.'è519ez&é"(§è58');
+        return sha1('fze584feGE9z658fe'.self::SPECIFIC_SALT.'g5g4er69g5r!'.$id.'7ze98FEez89ze');
     }
     
     /**
@@ -170,7 +170,7 @@ class Crypt extends General
      */
     public static function hashedId($id)
     {        
-        return sha1('àEFZEF§è!'.$id.'èfezrthtr'.self::SPECIFIC_SALT.'cv$558');
+        return sha1('fsez9ef!'.$id.'gfEgfr569z6'.self::SPECIFIC_SALT.'cgr5g66EGF8');
     }
     
     /**
@@ -180,7 +180,7 @@ class Crypt extends General
      */
     public static function tokenGeneralUrl($token)
     {        
-        return sha1('àzFE§è!'.$token.'èf§!è§§è!çr'.self::SPECIFIC_SALT.'cv$558');
+        return sha1('FEZ5845fe'.$token.'FZE65fez'.self::SPECIFIC_SALT.'FE51ef');
     }
 }
 
