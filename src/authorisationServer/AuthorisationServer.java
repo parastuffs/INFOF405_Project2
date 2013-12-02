@@ -206,8 +206,15 @@ public class AuthorisationServer implements Runnable{
 		
 		
 		requestClientID = (int)request.get(0);
+		
+		//TODO AJOUT aller chercher cle RSA du client ICI
+		
+		
 		//System.out.println("requestClientID="+requestClientID);
 		requestWSID = (int)request.get(1);
+		
+		//TODO AJOUT regarder si le client peut acceder a WS1, bloquer si necessaire
+		
 		//System.out.println("requestWSID="+requestWSID);
 		encryptedClientID = (SealedObject)request.get(2);
 		SealedObject encryptedWSID = (SealedObject)request.get(3);
