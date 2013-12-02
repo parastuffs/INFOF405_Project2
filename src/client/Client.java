@@ -9,11 +9,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Array;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -25,6 +27,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.ListIterator;
 import java.util.Random;
 import java.util.Scanner;
@@ -35,11 +38,11 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SealedObject;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.ServerSocketFactory;
 import javax.xml.bind.DatatypeConverter;
-
 
 
 public class Client {
@@ -59,25 +62,25 @@ public class Client {
 	private final int WS2_ID = 2;
 	private final String PRIVATEKEYFILE = "certs/key.CL1.private.pem";
 	private final String PUBLICKEYFILE = "certs/key.CL1.public.pem";
+	private final String PUBLICKEYFILE_AS = "certs/key.AS.pub.pem";
 	
 	private PrivateKey clientPrivateKey;
 	private PublicKey clientPublicKey;
 	private PublicKey ASPublicKey;
-	private SecretKeySpec sharedKeyWS1;
+	//private SecretKeySpec sharedKeyWS1;
+	//private SecretKey sharedKeyWS1;
+	private Key sharedKeyWS1;
 	private int cryptoperiodWS1;
 	
 	public Client() {
 
+		System.out.println("Loading the keys...");
+		
 		this.clientPrivateKey = loadPrivateKey(this.PRIVATEKEYFILE, "RSA");
-		System.out.println("private client: "+this.clientPrivateKey);
 		this.clientPublicKey = loadPublicKey(this.PUBLICKEYFILE, "RSA");
-		//For testing purpose only ####
-		try {
-			generateKeys();
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		}
-		//####
+		this.ASPublicKey = loadPublicKey(this.PUBLICKEYFILE_AS, "RSA");
+		
+		System.out.println("Key loaded.");
 	
 	}
 	
@@ -162,30 +165,30 @@ public class Client {
 		this.r3 = new byte[16];
 		Random rand = SecureRandom.getInstance("SHA1PRNG");
 		rand.nextBytes(r3);
+        System.out.println("r3: "+new String(r3, "UTF-8"));
 		
+		//Encryption
 		Cipher ciph = Cipher.getInstance("RSA");//RSA encryption
-		ciph.init(Cipher.ENCRYPT_MODE, this.clientPublicKey);//TODO WARNING/!\ we currently encrypt the message with the client public key.
-		
+		ciph.init(Cipher.ENCRYPT_MODE, this.ASPublicKey);
 		SealedObject encryptedClientID = new SealedObject(CLIENT_ID, ciph);
 		SealedObject encryptedNonce = new SealedObject(this.r3, ciph);
+		SealedObject encryptedWSID = new SealedObject(this.WS1_ID, ciph);
 
 		/**
 		 * Array of all the elements to be sent to the distant server:
 		 * client ID, WS ID, E_AS(client ID), E_AS(r3)
 		 */
 		ArrayList<Object> message = new ArrayList<Object>();//List of the objects to send to AS
-		message.add(CLIENT_ID);
-		message.add(AS_ID);
-		//TODO adding the private key to the list is temporary, for testing purpose only
-		//message.add(this.clientPrivateKey);
-		message.add(encryptedClientID);
-		message.add(encryptedNonce);
+		message.add(CLIENT_ID);//0
+		message.add(this.WS1_ID);//1
+		message.add(encryptedClientID);//2
+		message.add(encryptedWSID);//3
+		message.add(encryptedNonce);//4
 
 		System.out.println("Sending to server");
 		
 		ObjectOutputStream outAS = new ObjectOutputStream(this.sockAS.getOutputStream());
 		outAS.writeObject(message);
-		outAS.flush();
 		
 		//
 		//Second, awaits the answer from the AS
@@ -198,26 +201,43 @@ public class Client {
         byte[] r3Challenge = new byte[16];
         r3Challenge = (byte[])RSADecipher(distantObjects.get(2)); 
         this.r4 = new byte[16];
-        this.r4 = (byte[])RSADecipher(distantObjects.get(3));
+        this.r4 = (byte[])RSADecipher(distantObjects.get(3));//Decrypt the challenge
+        
+        
+        
+        
         
         //Time to check that everything sent by AS is OK:
-        if(idASchallenge == this.AS_ID && idWSchallenge == this.WS1_ID && r3Challenge == this.r3) {
+        if(idASchallenge == this.AS_ID && idWSchallenge == this.WS1_ID && Arrays.equals(r3Challenge,this.r3)) {
         	
         	//
         	//Third, sends the challenge, clear, to AS.
         	//
+        	System.out.println("Everything is fine so far, proceeding to step 3: sending back the challenge r4.");
         	outAS.writeObject(this.r4);
         	
         	//
         	//Fourth, AS sends the symmetric key to dialog with WS
         	//
-        	distantObjects = (ArrayList<Object>)ois.readObject();
-        	this.sharedKeyWS1 = (SecretKeySpec)RSADecipher(distantObjects.get(0));
-        	this.cryptoperiodWS1 = (int)RSADecipher(distantObjects.get(1));
-        	r3Challenge = (byte[])RSADecipher(distantObjects.get(2));
+        	ArrayList<Object> answer = new ArrayList<Object>();
+        	answer = (ArrayList<Object>)ois.readObject();
+        	System.out.println("Client just received the key");
         	
-        	if(r3Challenge == this.r3) {
+        	//Creation of the AES key
+        	String algo = this.clientPrivateKey.getAlgorithm();
+    		Cipher ciphBis = Cipher.getInstance(algo);
+    		ciphBis.init(Cipher.DECRYPT_MODE, this.clientPrivateKey);
+    		SealedObject encryptedAESKey = (SealedObject)answer.get(0);
+			byte[] AESKey = new byte[16];
+    		AESKey = (byte[])RSADecipher(encryptedAESKey);
+    		this.sharedKeyWS1 = new SecretKeySpec(AESKey, 0, 16, "AES");    		
+    		
+    		this.cryptoperiodWS1 = (int)RSADecipher(answer.get(1));
+        	r3Challenge = (byte[])RSADecipher(answer.get(2));
+        	
+        	if(Arrays.equals(r3Challenge,this.r3)) {
         		closeConnectionAS();
+        		System.out.println("Key reception successful. The client can know talk to WS");
         		//OK; open communication with WS1.
         		return true;
         	}
@@ -229,6 +249,10 @@ public class Client {
         	
         }
         else {
+        	System.out.println("Something went wrong during the verification:");            	
+        	System.out.println("idASchallenge="+idASchallenge+", expecting "+this.AS_ID);
+        	System.out.println("idWSchallenge="+idWSchallenge+", expecting "+this.WS1_ID);
+        	System.out.println("r3Challenge="+new String(r3Challenge,"UTF-8")+", expecting "+new String(this.r3,"UTF-8"));
         	closeConnectionAS();
         	return false;
         }
@@ -486,15 +510,6 @@ public class Client {
 		//t.start();
 		//Thread t1 = new Thread(new TestAESServer());
 		//t1.start();
-		
-		try {
-			c.requestAccessBlackBoard();
-			//c.testAESConnection();
-		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
-				| IllegalBlockSizeException | IOException 
-				| ClassNotFoundException e) {
-			e.printStackTrace();
-		}
 	}
 
 }

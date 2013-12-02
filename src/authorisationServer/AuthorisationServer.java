@@ -1,6 +1,9 @@
 package authorisationServer;
 
 
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -18,8 +21,12 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -33,6 +40,7 @@ import javax.crypto.SealedObject;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.net.ServerSocketFactory;
+import javax.xml.bind.DatatypeConverter;
 
 public class AuthorisationServer implements Runnable{
 
@@ -48,13 +56,15 @@ public class AuthorisationServer implements Runnable{
 	private Cipher encryptWithWSPublicKey; //TODO Class attributes
 	private Cipher decryptWithASPrivateKey;
 	private Cipher encryptWithWSSharedKey;
-	private int ASid = 42;
 	private List<byte[]> nonces; //list of random "nonces"
 	private Key AESKeyWithWS; //TODO TESTING purpose; do it in a better way
 	private PrivateKey ASprivateKey;
 	private PublicKey WS1publicKey;
 	private PublicKey WS2publicKey;
 	private final int CRYPTOPERIOD = 7200;//2 hours
+	//TODO for testing, remove when DB OK
+	private final String PUBLICKEYFILE_CLIENT = "certs/key.CL1.public.pem";
+	private final String PRIVATEKEYFILE_AS = "certs/key.AS.priv.pem";
 	
 	/**
 	 * Map of clients public keys.
@@ -62,6 +72,8 @@ public class AuthorisationServer implements Runnable{
 	 * Item: public key of the client
 	 */
 	private Map<Integer, PublicKey> clientPublicKey;
+	
+	private final int CLIENTID = 10;
 
 	private ObjectOutputStream clientOOS;
 	private ObjectInputStream clientOIS;
@@ -70,6 +82,14 @@ public class AuthorisationServer implements Runnable{
 
 		//init Nonces
 		nonces = new ArrayList<byte[]>();
+		
+		//Load keys
+		PublicKey temp = loadPublicKey(this.PUBLICKEYFILE_CLIENT, "RSA");
+		if(temp == null) System.out.println("bite");
+		this.clientPublicKey = new HashMap<Integer, PublicKey>();
+		this.clientPublicKey.put(this.CLIENTID, temp);
+		this.ASprivateKey = loadPrivateKey(this.PRIVATEKEYFILE_AS, "RSA");
+		
 		//initiate Socket
 		ServerSocketFactory servFactory = ServerSocketFactory.getDefault();
 		try {
@@ -79,9 +99,67 @@ public class AuthorisationServer implements Runnable{
 		} 
 	}
 
+	
+	/**
+	 * Method loading the private keys from the .pem file.
+	 * @param filename .pem file containing the key
+	 */
+	private PrivateKey loadPrivateKey(String filename, String algo) {
+		File f = new File(filename);
+		FileInputStream fis;
+		try {
+			fis = new FileInputStream(f);
+			DataInputStream dis = new DataInputStream(fis);
+			byte[] keyBytes = new byte[(int) f.length()];
+			dis.readFully(keyBytes);
+			dis.close();
 
-	private boolean handshakeWithClient(ArrayList<Object> request) throws IOException, ClassNotFoundException {
+			String temp = new String(keyBytes);
+			String privKeyPEM = temp.replace("-----BEGIN PRIVATE KEY-----\n", "");
+			privKeyPEM = privKeyPEM.replace("-----END PRIVATE KEY-----", "");
+			//System.out.println("Private key\n"+privKeyPEM);
+			byte[] decoded = DatatypeConverter.parseBase64Binary(privKeyPEM);
+			PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
+			KeyFactory kf = KeyFactory.getInstance(algo);
+			return kf.generatePrivate(spec);	
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+		
+	}
+	
+	/**
+	 * Method loading the public key from the .pem file.
+	 * @param filename .pem file containing the key
+	 */
+	private PublicKey loadPublicKey(String filename, String algo) {
+		File f = new File(filename);
+		FileInputStream fis;
+		try {
+			fis = new FileInputStream(f);
+			DataInputStream dis = new DataInputStream(fis);
+			byte[] keyBytes = new byte[(int) f.length()];
+			dis.readFully(keyBytes);
+			dis.close();
+			
+			String temp = new String(keyBytes);
+			String publicKeyPEM = temp.replace("-----BEGIN PUBLIC KEY-----\n", "");
+			publicKeyPEM = publicKeyPEM.replace("-----END PUBLIC KEY-----", "");
+			byte[] decoded = DatatypeConverter.parseBase64Binary(publicKeyPEM);
+			X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
+			KeyFactory kf = KeyFactory.getInstance(algo);
+			return kf.generatePublic(spec);
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+
+	private boolean handshakeWithClient(ArrayList<Object> request, ObjectInputStream ois) throws IOException, ClassNotFoundException {
 		//STEP 1
+		System.out.println("Beginning of setp 1");
 		//receiving objects :
 		int requestClientID;//Client ID encapsulated in the request
 		int requestWSID;
@@ -89,26 +167,30 @@ public class AuthorisationServer implements Runnable{
 		
 		
 		requestClientID = (int)request.get(0);
+		//System.out.println("requestClientID="+requestClientID);
 		requestWSID = (int)request.get(1);
-		encryptedClientID = (SealedObject) request.get(2);
+		//System.out.println("requestWSID="+requestWSID);
+		encryptedClientID = (SealedObject)request.get(2);
 		SealedObject encryptedWSID = (SealedObject)request.get(3);
-		encryptedR3 = (SealedObject) request.get(4);
-		
-		//initCipher(WSPublicKey);//TODO TESTING ONLY
-		//initDecipher(ASPrivateKey);//TODO TESTING ONLY
+		encryptedR3 = (SealedObject)request.get(4);
 		
 		//Decrypt
 		byte[] r3Challenge = new byte[16];
         r3Challenge = (byte[])RSADecipher(encryptedR3);
+        //System.out.println("r3Challenge: "+new String(r3Challenge, "UTF-8"));
         int decryptedClientID = (int)RSADecipher(encryptedClientID);
+        //System.out.println("decryptedClientID="+decryptedClientID);
         int decryptedWSID = (int)RSADecipher(encryptedWSID);
+        //System.out.println("decryptedWSID="+decryptedWSID);
 		
-		//Verification on the WebServer ID
+		//Verification on the WebServer ID and client ID
 		if(decryptedClientID != requestClientID || decryptedWSID != requestWSID) {
 			System.out.println("Auth.Server: Step 1 verification FAILED:");
-			//System.out.println("WS_ID="+requestClient+",encrypted(WS_ID) received="+decryptedWSid);
+			System.out.println("WS_ID="+requestWSID+",encrypted(WS_ID) received="+decryptedWSID);
+			System.out.println("Client ID="+requestClientID+",encrypted(Client ID) received="+decryptedClientID);
 			return false;
 		}
+		System.out.println("End of step 1");
 		//end of STEP 1
 
 		//
@@ -132,21 +214,23 @@ public class AuthorisationServer implements Runnable{
 		message.add(encryptedNonce4);//3
 		out.writeObject(message);
 		out.flush();
+		System.out.println("End of step 2");
 		//end of STEP 2
 
 		//
 		//STEP 3
 		//
-		ObjectInputStream in;
-		in = new ObjectInputStream(clientSocket.getInputStream());
-		byte[] receivedR4 = (byte[]) in.readObject();
-		if(receivedR4 != r4) {
+		//Note: we can't open multiple ObjectInputStream on a socket.
+		byte[] receivedR4 = (byte[]) ois.readObject();
+		if(!Arrays.equals(receivedR4, r4)) {
 			System.out.println("Auth.Server: Step 3 verification FAILED:");
 			//System.out.println("Random sent="+random2+",random received="+receivedRandom2);
 			return false;
 		}
-		in.close();
+		System.out.println("End of step 3");
 		//end of STEP 3
+		
+		System.out.println("So far, so good. We will now send the key to the client.");
 		
 		//
 		//Now, send the symetric key to the client.
@@ -186,7 +270,7 @@ public class AuthorisationServer implements Runnable{
 //		ObjectOutputStream out = getWSOutputStream();
 		try {
 			ArrayList<Object> message = new ArrayList<Object>();
-			message.add(ASid); //0
+			message.add(this.AS_ID); //0
 			message.add(encryptedClientID);//1
 			message.add(encryptedKey); //2
 			message.add(encryptedPeriod); //3
@@ -257,7 +341,7 @@ public class AuthorisationServer implements Runnable{
 		SealedObject encryptedRandom1 = null;
 		SealedObject encryptedRandom2 = null;
 		try {
-			encryptedASid = new SealedObject(ASid,encryptWithWSPublicKey);
+			encryptedASid = new SealedObject(this.AS_ID,encryptWithWSPublicKey);
 			encryptedRandom1 = new SealedObject(decryptedRandom1,encryptWithWSPublicKey);
 			encryptedRandom2 = new SealedObject(random2,encryptWithWSPublicKey);
 		} catch (IllegalBlockSizeException e1) {
@@ -343,6 +427,7 @@ public class AuthorisationServer implements Runnable{
 	private SecretKey generateAESKey() { //TODO TESTING... comment en pratique?
 		try {
 			KeyGenerator kg = KeyGenerator.getInstance("AES");
+			kg.init(128);
 			return kg.generateKey();
 		} catch (NoSuchAlgorithmException e) {
 			System.out.println("Auth.Server: error Generating AES Key:"+e.getMessage());
@@ -441,7 +526,7 @@ public class AuthorisationServer implements Runnable{
 	 */
 	private Object RSADecipher(Object ciphered) {
         
-        String algo = this.ASprivateKey.getAlgorithm();
+        String algo = this.ASprivateKey.getAlgorithm();//RSA
 		try {
 			Cipher ciph = Cipher.getInstance(algo);
 			ciph.init(Cipher.DECRYPT_MODE, this.ASprivateKey);
@@ -472,7 +557,10 @@ public class AuthorisationServer implements Runnable{
 		
 		//encrypting:
 		SealedObject encryptedKey, encryptedR3, encryptedPeriod;
-		encryptedKey = RSACipher(clientToWSKey, this.clientPublicKey.get(clientID)); 
+		encryptedKey = RSACipher(clientToWSKey.getEncoded(), this.clientPublicKey.get(clientID));
+		//byte[] bite = new byte[16];
+		//encryptedKey = RSACipher(encryptedKey, this.clientPublicKey.get(clientID));
+		//encryptedKey = RSACipher(clientToWSKey.getEncoded(), this.clientPublicKey.get(clientID));
 		encryptedR3 = RSACipher(r3, this.clientPublicKey.get(clientID));
 		encryptedPeriod = RSACipher(this.CRYPTOPERIOD, this.clientPublicKey.get(clientID));
 		
@@ -483,16 +571,21 @@ public class AuthorisationServer implements Runnable{
 		message.add(encryptedR3);//2
 		try {
 			oos.writeObject(message);
+			System.out.println("Key sent to the client.");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
+	
+	
+	@SuppressWarnings("unchecked")
 	@Override
 	public void run() {
 		
 		while(true) {
 			boolean clientConnected = false;
 			try {
+				System.out.println("Waiting for a new connection.");
 				clientSocket = serverSocket.accept();
 				System.out.println("Auth.Server: New client connected: "+clientSocket.getInetAddress().toString());
 				clientConnected = true;
@@ -503,30 +596,22 @@ public class AuthorisationServer implements Runnable{
 					
 					int acceptedID = (int)distantObjects.get(0);
 					if(acceptedID == this.CLIENT_ID) {//We have a user
-						handshakeWithClient(distantObjects);
+						System.out.println("We have a client, here!");
+						handshakeWithClient(distantObjects, ois);
 					}
-					else if(acceptedID == this.PORT_WS1) {//First WS
+					else if(acceptedID == this.WS1_ID) {//First WS
+						System.out.println("Accepting WS1");
 						handshakeWithWS();
 					}
-					else if(acceptedID == this.PORT_WS2) {//Second WS
+					else if(acceptedID == this.WS2_ID) {//Second WS
+						System.out.println("Accepting WS2");
 						handshakeWithWS();
 					}
-					
-					boolean success = handshakeWithWS();
-					if(success)
-						System.out.println("Shared Key Successfully with WS");
-					else {
-						try {
-							clientSocket.close();
-						} catch (IOException e) {
-							System.out.println("AS : socket closing FAILED");
-							e.printStackTrace();
-						}
-						System.out.println("-_- ............");
-					}
+					clientSocket.close();
 				}
 			} catch (IOException | ClassNotFoundException e) {
 				System.out.println("Auth.Server: error accepting WS:"+e.getMessage());
+				e.printStackTrace();
 			}
 		}
 		
