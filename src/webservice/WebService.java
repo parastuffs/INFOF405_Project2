@@ -1,5 +1,8 @@
 package webservice;
 
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -9,13 +12,18 @@ import java.net.UnknownHostException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
@@ -28,6 +36,7 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.ServerSocketFactory;
 import javax.net.SocketFactory;
+import javax.xml.bind.DatatypeConverter;
 
 public abstract class WebService implements Runnable {
 
@@ -35,8 +44,12 @@ public abstract class WebService implements Runnable {
 	protected final static String ASaddress = "localhost";
 	protected final static int ASport = 42000;
 	protected final static int ASid = 0;
-	protected static Key ASpublicKey; //TODO recuperer la cle publique depuis le .pem
-	protected static Key ASprivateKey;//TODO TESTING ONLY
+	protected static Key ASpublicKey;
+	protected PrivateKey WS1privateKey;
+	protected PrivateKey WS2privateKey;
+	private final String PUBLICKEYFILE_AS = "certs/key.AS.pub.pem";
+	private final String PRIVATEKEYFILE_WS1 = "certs/key.WS1.priv.pem"; 
+	private final String PRIVATEKEYFILE_WS2 = "certs/key.WS2.priv.pem";
 	
 	protected Key sharedWithASKey; //AES key between AS and WS
 	protected Key WSpublicKey;//TODO recuperer la cle publique depuis le .pem ??
@@ -75,23 +88,28 @@ public abstract class WebService implements Runnable {
 		this.PORT = port;
 		this.webID = ID;
 		ServerSocketFactory servFactory = ServerSocketFactory.getDefault();
+		
+		//load public key :
+		ASpublicKey = loadPublicKey(this.PUBLICKEYFILE_AS, "RSA");
+		this.WS1privateKey = loadPrivateKey(PRIVATEKEYFILE_WS1,"RSA");
+		this.WS2privateKey = loadPrivateKey(PRIVATEKEYFILE_WS2,"RSA");
 		//TODO test purposes***:
-		try {
-			KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-			kpg.initialize(1024);
-			KeyPair kp = kpg.generateKeyPair();
-			PublicKey pubKey = kp.getPublic();
-			ASpublicKey = pubKey;
-			PrivateKey privKey = kp.getPrivate();
-			ASprivateKey = privKey;
+//		try {
+//			KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+//			kpg.initialize(1024);
+//			KeyPair kp = kpg.generateKeyPair();
+//			PublicKey pubKey = kp.getPublic();
+//			ASpublicKey = pubKey;
+//			PrivateKey privKey = kp.getPrivate();
+//			ASprivateKey = privKey;
 
-			kp = kpg.generateKeyPair();
-			this.WSpublicKey = kp.getPublic();
-			this.WSprivateKey = kp.getPrivate();
-		} catch (NoSuchAlgorithmException e1) {
+//			kp = kpg.generateKeyPair();
+//			this.WSpublicKey = kp.getPublic();
+//			this.WSprivateKey = kp.getPrivate();
+//		} catch (NoSuchAlgorithmException e1) {
 			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+//			e1.printStackTrace();
+//		}
 		//**end of test purposes 
 
 		//init server socket
@@ -129,7 +147,60 @@ public abstract class WebService implements Runnable {
 			System.out.println("WEBSERVICE: could not connect to AS");
 		}
 	}
+	/**
+	 * Method loading the private keys from the .pem file.
+	 * @param filename .pem file containing the key
+	 */
+	protected PrivateKey loadPrivateKey(String filename, String algo) {
+		File f = new File(filename);
+		FileInputStream fis;
+		try {
+			fis = new FileInputStream(f);
+			DataInputStream dis = new DataInputStream(fis);
+			byte[] keyBytes = new byte[(int) f.length()];
+			dis.readFully(keyBytes);
+			dis.close();
 
+			String temp = new String(keyBytes);
+			String privKeyPEM = temp.replace("-----BEGIN PRIVATE KEY-----\n", "");
+			privKeyPEM = privKeyPEM.replace("-----END PRIVATE KEY-----", "");
+			byte[] decoded = DatatypeConverter.parseBase64Binary(privKeyPEM);
+			PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
+			KeyFactory kf = KeyFactory.getInstance(algo);
+			return kf.generatePrivate(spec);	
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+		
+	}
+	
+	/**
+	 * Method loading the public key from the .pem file.
+	 * @param filename .pem file containing the key
+	 */
+	protected PublicKey loadPublicKey(String filename, String algo) {
+		File f = new File(filename);
+		FileInputStream fis;
+		try {
+			fis = new FileInputStream(f);
+			DataInputStream dis = new DataInputStream(fis);
+			byte[] keyBytes = new byte[(int) f.length()];
+			dis.readFully(keyBytes);
+			dis.close();
+			
+			String temp = new String(keyBytes);
+			String publicKeyPEM = temp.replace("-----BEGIN PUBLIC KEY-----\n", "");
+			publicKeyPEM = publicKeyPEM.replace("-----END PUBLIC KEY-----", "");
+			byte[] decoded = DatatypeConverter.parseBase64Binary(publicKeyPEM);
+			X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
+			KeyFactory kf = KeyFactory.getInstance(algo);
+			return kf.generatePublic(spec);
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
 	/**
 	 * essaie d'etablir la connexion avec le AS
 	 * @return vrai ou faux suivant si succes ou pas (du protocole)
@@ -167,18 +238,12 @@ public abstract class WebService implements Runnable {
 		}
 		//Objects to send :
 		try {
-//			ObjectOutputStream out = new ObjectOutputStream(ASsocket.getOutputStream());
 			ArrayList<Object> message = new ArrayList<Object>();
 			message.add(this.webID); //0
 			message.add(encryptedWSid); //1
 			message.add(encryptedNonce); //2
-			message.add(ASprivateKey);//3 TODO TESTING only
-			message.add(this.WSpublicKey); //4 TODO TESTING ONLY
-//			out.writeObject(message); //send the ID and the encrypted ID+challenge
 			this.ASSocketOOS.writeObject(message);
-//			this.ASSocketOOS.flush();
-//			out.flush();
-//			out.close();
+			//			this.ASSocketOOS.flush();
 		} catch (IOException e) {
 			System.out.println("WEBSERVICE: error AS connection: sending step1:"+e.getMessage());
 			return false;
@@ -189,13 +254,10 @@ public abstract class WebService implements Runnable {
 		//receiving objects :
 		SealedObject encryptedASid, encryptedR1, encryptedR2;
 		try {
-//			ObjectInputStream in = new ObjectInputStream(ASsocket.getInputStream());
-//			ArrayList<?> message = (ArrayList<?>) in.readObject();
 			ArrayList<?> message = (ArrayList<?>) this.ASSocketOIS.readObject();
 			encryptedASid = (SealedObject) message.get(0);
 			encryptedR1 = (SealedObject) message.get(1);
 			encryptedR2 = (SealedObject) message.get(2);
-//			in.close();
 		} catch (IOException e) {
 			System.out.println("WEBSERVICE: error AS connection: receiving step2:"+e.getMessage());
 			return false;
@@ -205,27 +267,13 @@ public abstract class WebService implements Runnable {
 		}
 		//decrypting : 
 		byte[] decryptedRandom2;
-		try {
-			int decryptedASid = (Integer) encryptedASid.getObject(this.decryptWithWSPrivateKey);
-			byte[] decryptedRandom1 = (byte[]) encryptedR1.getObject(this.decryptWithWSPrivateKey);
-			decryptedRandom2 = (byte[]) encryptedR2.getObject(this.decryptWithWSPrivateKey);
-			if(!this.compare(decryptedRandom1,random1) || decryptedASid!=ASid) {
-				System.out.println("WEBSERVICE: Step 2 verification FAILED:");
-				System.out.println("Random sent="+random1+",random received="+decryptedRandom1);
-				System.out.println("AS_ID="+ASid+",AS_ID received="+decryptedASid);
-				return false;
-			}
-		} catch (IllegalBlockSizeException e) {
-			System.out.println("WEBSERVICE: error AS connection: decrypting step2:"+e.getMessage());
-			return false;
-		} catch (BadPaddingException e) {
-			System.out.println("WEBSERVICE: error AS connection: decrypting step2:"+e.getMessage());
-			return false;
-		} catch (IOException e) {
-			System.out.println("WEBSERVICE: error AS connection: decrypting step2:"+e.getMessage());
-			return false;
-		} catch (ClassNotFoundException e) {
-			System.out.println("WEBSERVICE: error AS connection: decrypting step2:"+e.getMessage());
+		int decryptedASid = (Integer) RSADecipher(encryptedASid);
+		byte[] decryptedRandom1 = (byte[]) RSADecipher(encryptedR1);
+		decryptedRandom2 = (byte[]) RSADecipher(encryptedR2);
+		if(!this.compare(decryptedRandom1,random1) || decryptedASid!=ASid) {
+			System.out.println("WEBSERVICE: Step 2 verification FAILED:");
+			System.out.println("Random sent="+random1+",random received="+decryptedRandom1);
+			System.out.println("AS_ID="+ASid+",AS_ID received="+decryptedASid);
 			return false;
 		}
 		//end of STEP 2
@@ -233,11 +281,8 @@ public abstract class WebService implements Runnable {
 		//STEP 3
 		//Send random2 back :
 		try {
-//			ObjectOutputStream out = new ObjectOutputStream(ASsocket.getOutputStream());
-//			out.writeObject(decryptedRandom2);
 			this.ASSocketOOS.writeObject(decryptedRandom2);
 			this.ASSocketOOS.flush();
-//			out.close();
 		} catch (IOException e) {
 			System.out.println("WEBSERVICE: error AS connection: sending step3:"+e.getMessage());
 			return false;
@@ -248,12 +293,9 @@ public abstract class WebService implements Runnable {
 		//receiving objects :
 		SealedObject encryptedKey, encryptedR1bis;
 		try {
-//			ObjectInputStream in = new ObjectInputStream(ASsocket.getInputStream());
-//			ArrayList<?> message = (ArrayList<?>) in.readObject();
 			ArrayList<?> message = (ArrayList<?>) ASSocketOIS.readObject();
 			encryptedKey = (SealedObject) message.get(0);
 			encryptedR1bis = (SealedObject) message.get(1);
-//			in.close();
 		} catch (IOException e) {
 			System.out.println("WEBSERVICE: error AS connection: receiving step 4:"+e.getMessage());
 			return false;
@@ -263,30 +305,15 @@ public abstract class WebService implements Runnable {
 		}
 		//decrypting : 
 		Key decryptedKey;
-		try { //BEWARE : encrypted key is in raw format (aka byte[])
-			byte[] rawKey = (byte[]) encryptedKey.getObject(this.decryptWithWSPrivateKey);
-			decryptedKey = new SecretKeySpec(rawKey,"AES");
-//			decryptedKey = (Key) encryptedKey.getObject(this.decryptWithWSPrivateKey);
-			byte[] decryptedRandom1bis = (byte[]) encryptedR1bis.getObject(this.decryptWithWSPrivateKey);
-			if(!this.compare(decryptedRandom1bis,random1)) {
-				System.out.println("WEBSERVICE: Step 4 verification FAILED:");
-				System.out.println("Random sent="+random1+",random received="+decryptedRandom1bis);
-				return false;
-			}
-		} catch (IllegalBlockSizeException e) {
-			System.out.println("WEBSERVICE: error AS connection: decrypting step4:"+e.getMessage());
-			return false;
-		} catch (BadPaddingException e) {
-			System.out.println("WEBSERVICE: error AS connection: decrypting step4:"+e.getMessage());
-			return false;
-		} catch (IOException e) {
-			System.out.println("WEBSERVICE: error AS connection: decrypting step4:"+e.getMessage());
-			return false;
-		} catch (ClassNotFoundException e) {
-			System.out.println("WEBSERVICE: error AS connection: decrypting step4:"+e.getMessage());
+		byte[] rawKey = (byte[]) RSADecipher(encryptedKey);
+		decryptedKey = new SecretKeySpec(rawKey,"AES");
+		byte[] decryptedRandom1bis = (byte[]) RSADecipher(encryptedR1bis);
+		if(!this.compare(decryptedRandom1bis,random1)) {
+			System.out.println("WEBSERVICE: Step 4 verification FAILED:");
+			System.out.println("Random sent="+random1+",random received="+decryptedRandom1bis);
 			return false;
 		}
-		
+
 		this.sharedWithASKey = decryptedKey;
 		this.decryptWithASSharedKey = this.getCipherOfSharedKey(this.sharedWithASKey,DECRYPT);
 		//end of STEP 4
@@ -621,6 +648,37 @@ public abstract class WebService implements Runnable {
 		} catch (IOException e) {
 			System.out.println("WebService: error closing AS socket");
 			e.printStackTrace();
+		}
+	}
+	/**
+	 * Decipher the given object with the private RSA key of the client.
+	 * Note the the method returns an Object, the caller thus has to
+	 * know what he expect and cast it.
+	 * 
+	 * @param ciphered Ciphered object to be deciphered.
+	 * @return The deciphered object.
+	 */
+	private Object RSADecipher(Object ciphered) {
+        
+		PrivateKey WSprivateKey;
+		if(this.webID==1)
+			WSprivateKey = this.WS1privateKey;
+		else if(this.webID==2)
+			WSprivateKey = this.WS2privateKey;
+		else {
+			System.out.println("RSADecipher error : wrong service ID");
+			return null;
+		}
+        String algo = WSprivateKey.getAlgorithm();//RSA
+		try {
+			Cipher ciph = Cipher.getInstance(algo);
+			ciph.init(Cipher.DECRYPT_MODE, WSprivateKey);
+			return (Object)((SealedObject) ciphered).getObject(ciph);
+		} catch (ClassNotFoundException | IllegalBlockSizeException
+				| BadPaddingException | IOException | NoSuchAlgorithmException
+				| NoSuchPaddingException | InvalidKeyException e) {
+			e.printStackTrace();
+			return null;
 		}
 	}
 }

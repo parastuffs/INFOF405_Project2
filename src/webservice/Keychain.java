@@ -11,7 +11,7 @@ public class Keychain extends WebService {
 	private static final int KEY_PORT = 2014; //keychain port
 	private static final int KEY_ID = 2; //keychain service ID
 	private final int SHOW = 0; //show the passwords
-	private final int ADD = 1; //add a new password
+	private final int ADD = 1; //add a new password 
 	
 	public Keychain() {
 		super(KEY_PORT,KEY_ID);

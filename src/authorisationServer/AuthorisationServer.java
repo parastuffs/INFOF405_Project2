@@ -335,19 +335,21 @@ public class AuthorisationServer implements Runnable{
 			
 		//decrypting : 
 		byte[] decryptedRandom1;
-		try {
-			int decryptedWSid = (Integer) encryptedWSid.getObject(decryptWithASPrivateKey);
-			decryptedRandom1 = (byte[]) encryptedR1.getObject(decryptWithASPrivateKey);
+//		try {
+//			int decryptedWSid = (Integer) encryptedWSid.getObject(decryptWithASPrivateKey);
+//			decryptedRandom1 = (byte[]) encryptedR1.getObject(decryptWithASPrivateKey);
+			int decryptedWSid = (Integer) RSADecipher(encryptedWSid);
+			decryptedRandom1 = (byte[]) RSADecipher(encryptedR1);
 			//Verification on the WebServer ID
 			if(decryptedWSid!=WSid) {
 				System.out.println("Step 1 verification FAILED:");
 				System.out.println("WS_ID="+WSid+",encrypted(WS_ID) received="+decryptedWSid);
 				return false;
 			}
-		} catch (IllegalBlockSizeException | BadPaddingException | IOException | ClassNotFoundException e) {
-			System.out.println("Step 1: error decrypting:"+e.getMessage());
-			return false;
-		}
+//		} catch (IllegalBlockSizeException | BadPaddingException | IOException | ClassNotFoundException e) {
+//			System.out.println("Step 1: error decrypting:"+e.getMessage());
+//			return false;
+//		}
 		System.out.println("Step 1 - ok");
 		//end of STEP 1
 		
