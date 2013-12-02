@@ -62,6 +62,7 @@ public class AuthorisationServer implements Runnable{
 	private PublicKey WS1publicKey;
 	private PublicKey WS2publicKey;
 	private final int CRYPTOPERIOD = 7200;//2 hours
+	private Key clientToWSKey;
 	//TODO for testing, remove when DB OK
 	private final String PUBLICKEYFILE_CLIENT = "certs/key.CL1.public.pem";
 	private final String PRIVATEKEYFILE_AS = "certs/key.AS.priv.pem";
@@ -237,7 +238,9 @@ public class AuthorisationServer implements Runnable{
 		//
 		//Now, send the symetric key to the client.
 		//
+		this.clientToWSKey = generateAESKey();
 		sendAESKeyToClient(r3Challenge, requestClientID, out);
+		sendClientInfoToWS();
 
 		out.close();
 		
@@ -250,7 +253,6 @@ public class AuthorisationServer implements Runnable{
 	 */
 	private boolean sendClientInfoToWS() {
 		int period = 7200; //2h <-> 7200 seconds
-		Key clientToWSKey = generateAESKey();
 		if(clientToWSKey==null)
 			return false;
 		int clientID = 720;//TODO TESTING ONLY
@@ -555,7 +557,6 @@ public class AuthorisationServer implements Runnable{
 	}
 	
 	private void sendAESKeyToClient(byte[] r3, int clientID, ObjectOutputStream oos) {
-		Key clientToWSKey = generateAESKey();
 		
 		//encrypting:
 		SealedObject encryptedKey, encryptedR3, encryptedPeriod;
