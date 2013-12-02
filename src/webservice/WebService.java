@@ -429,8 +429,13 @@ public abstract class WebService implements Runnable {
 				boolean verif = this.verifyClient(clientID);
 				if(verif) { //si ok, dechiffre la requete et la traite
 					System.out.println("Verification succeeded, answering");
-					int request = this.decipherRequest( (SealedObject) message.get(1), clientID);
-					this.answerClientRequest(request,clientID,out);
+					int requestType = (Integer) this.decipherRequest( (SealedObject) message.get(1), clientID);
+					String requestMsg = "";
+					if(message.size()==3) {
+						requestMsg = (String) this.decipherRequest((SealedObject) message.get(2), clientID);
+						System.out.println("WS: Client request HAS msg"); //TODO TEST ONLY
+					}
+					this.answerClientRequest(requestType,requestMsg,clientID,out);
 				} else
 					System.out.println("Verification failed"); //DEBUG
 				//si non ou si requete traitee, ferme la connexion
@@ -475,12 +480,12 @@ public abstract class WebService implements Runnable {
 	 * @param clientID ID pour recuperer la clef de dechiffrement
 	 * @return l'ID de la requete, -1 en cas d'erreur
 	 */
-	private int decipherRequest(SealedObject encryptedRequest, int clientID) {
+	private Object decipherRequest(SealedObject encryptedRequest, int clientID) {
 		Key decryptKey = this.getClientKey(clientID);
 		Cipher ciph = this.getCipherOfSharedKey(decryptKey,DECRYPT); //get the decipher
-		int request=-1;
+		Object request = null;
 		try {
-			request = (Integer) encryptedRequest.getObject(ciph);
+			request = encryptedRequest.getObject(ciph);
 		} catch (IllegalBlockSizeException e) {
 			System.out.println("WS: decipherRequest failed:");
 			e.printStackTrace();
@@ -509,7 +514,7 @@ public abstract class WebService implements Runnable {
 	 * recoit la requete du client et repond avec le service demande
 	 * @param request ID de la requete
 	 */
-	protected abstract void answerClientRequest(int request, int clientID, ObjectOutputStream out);
+	protected abstract void answerClientRequest(int requestType, String reqMsg, int clientID, ObjectOutputStream out);
 
 	/**
 	 * Thread qui s'occupe de rajouter les infos des nouveaux clients, recues de l'AS

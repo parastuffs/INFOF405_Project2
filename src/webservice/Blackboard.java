@@ -19,11 +19,11 @@ public class Blackboard extends WebService {
 	
 
 	@Override
-	protected void answerClientRequest(int request, int clientID, ObjectOutputStream out) {
-		if(request!=SHOW || request!=WRITE)
+	protected void answerClientRequest(int requestType, String reqMsg, int clientID, ObjectOutputStream out) {
+		if(requestType!=SHOW || requestType!=WRITE)
 			System.out.println("Blackboard: invalid request");
 		else {
-			if(request==SHOW) {
+			if(requestType==SHOW) {
 				//collect all posts of the client from the DB
 				ArrayList<String> message = BlackboardDB.getInstance().getMyPosts(clientID);
 				try {
@@ -39,8 +39,9 @@ public class Blackboard extends WebService {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-			} else if(request==WRITE) {
-				BlackboardDB.getInstance().writeOnBoard(clientID, "Rainbow poney");//TESTING PURPOSE
+			} else if(requestType==WRITE && !reqMsg.isEmpty()) {
+//				BlackboardDB.getInstance().writeOnBoard(clientID, "Rainbow poney");//TESTING PURPOSE
+				BlackboardDB.getInstance().writeOnBoard(clientID, reqMsg);
 			}
 		}
 	}

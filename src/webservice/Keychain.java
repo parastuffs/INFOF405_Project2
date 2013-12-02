@@ -10,7 +10,7 @@ public class Keychain extends WebService {
 		super(KEY_PORT,KEY_ID);
 	}
 	@Override
-	protected void answerClientRequest(int request, int clientID, ObjectOutputStream out){
+	protected void answerClientRequest(int requestType, String reqMsg, int clientID, ObjectOutputStream out){
 		// TODO Auto-generated method stub
 		
 	}
