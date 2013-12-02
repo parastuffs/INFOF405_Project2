@@ -58,8 +58,8 @@ public class AuthorisationServer implements Runnable{
 	//TODO for testing, remove when DB OK
 	private final String PUBLICKEYFILE_CLIENT = "certs/key.CL1.public.pem";
 	private final String PRIVATEKEYFILE_AS = "certs/key.AS.priv.pem";
-	private final String PUBLICKEYFILE_WS1 = ""; //TODO 
-	private final String PUBLICKEYFILE_WS2 = ""; //TODO
+	private final String PUBLICKEYFILE_WS1 = "certs/key.WS1.pub.pem"; 
+	private final String PUBLICKEYFILE_WS2 = "certs/key.WS2.pub.pem";
 	
 	
 	/**
@@ -88,7 +88,8 @@ public class AuthorisationServer implements Runnable{
 		this.clientPublicKey = new HashMap<Integer, PublicKey>();
 		this.clientPublicKey.put(this.CLIENTID, temp);
 		this.ASprivateKey = loadPrivateKey(this.PRIVATEKEYFILE_AS, "RSA");
-		//TODO Load also the 2 RSA public keys for WS1, WS2
+		this.WS1publicKey = loadPublicKey(this.PUBLICKEYFILE_WS1, "RSA");
+		this.WS2publicKey = loadPublicKey(this.PUBLICKEYFILE_WS2, "RSA");
 		
 	}
 

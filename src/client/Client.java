@@ -90,7 +90,6 @@ public class Client {
 			String temp = new String(keyBytes);
 			String privKeyPEM = temp.replace("-----BEGIN PRIVATE KEY-----\n", "");
 			privKeyPEM = privKeyPEM.replace("-----END PRIVATE KEY-----", "");
-			//System.out.println("Private key\n"+privKeyPEM);
 			byte[] decoded = DatatypeConverter.parseBase64Binary(privKeyPEM);
 			PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
 			KeyFactory kf = KeyFactory.getInstance(algo);
